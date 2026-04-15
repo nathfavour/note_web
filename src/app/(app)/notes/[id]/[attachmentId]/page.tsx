@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -44,6 +44,7 @@ export default function AttachmentPage() {
   const params = useParams();
   const noteId = params?.id as string | undefined;
   const attachmentId = params?.attachmentId as string | undefined;
+  const isMountedRef = useRef(true);
 
   const [data, setData] = useState<AttachmentResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,6 @@ export default function AttachmentPage() {
 
   useEffect(() => {
     if (!noteId || !attachmentId) return;
-    let cancelled = false;
     (async () => {
       try {
         setLoading(true);
@@ -59,14 +59,16 @@ export default function AttachmentPage() {
         const res = await fetch(`/api/notes/${noteId}/attachments/${attachmentId}`);
         if (!res.ok) throw new Error('Failed to load attachment');
         const json = await res.json();
-        if (!cancelled) setData(json);
+        if (isMountedRef.current) setData(json);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load attachment');
+        if (isMountedRef.current) setError(e?.message || 'Failed to load attachment');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMountedRef.current) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [noteId, attachmentId]);
 
   const meta = data?.attachment;
@@ -211,7 +213,7 @@ export default function AttachmentPage() {
                     </Grid>
                   </Grid>
 
-                  {data?.expiresAt && (
+                  {data.expiresAt && (
                     <Box>
                       <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 1 }}>
                         URL Expires
@@ -366,5 +368,3 @@ export default function AttachmentPage() {
     </Box>
   );
 }
-
-

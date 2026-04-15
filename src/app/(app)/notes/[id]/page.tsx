@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getNote, updateNote, deleteNote } from '@/lib/appwrite';
 import type { Notes } from '@/types/appwrite';
@@ -33,6 +33,7 @@ import { useDataNexus } from '@/context/DataNexusContext';
 export default function NoteEditorPage() {
   const { id } = useParams();
   const router = useRouter();
+  const mountedRef = useRef(true);
   const [note, setNote] = useState<Notes | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -45,8 +46,6 @@ export default function NoteEditorPage() {
   const CACHE_KEY = useMemo(() => id ? `note_${id}` : null, [id]);
 
   useEffect(() => {
-    let mounted = true;
-
     if (!id || !CACHE_KEY) {
       setIsLoading(false);
       return;
@@ -63,19 +62,19 @@ export default function NoteEditorPage() {
       if (!cached) setIsLoading(true);
       try {
         const fetched = await fetchOptimized(CACHE_KEY, () => getNote(id as string));
-        if (mounted) {
+        if (mountedRef.current) {
           setNote(fetched);
         }
       } catch (error: any) {
         console.error('Failed to load note', error);
         showError('Failed to load note', 'Please try again later.');
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mountedRef.current) setIsLoading(false);
       }
     })();
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
   }, [id, CACHE_KEY, showError, fetchOptimized, getCachedData]);
 
@@ -308,4 +307,3 @@ export default function NoteEditorPage() {
     </Box>
   );
 }
-

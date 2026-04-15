@@ -128,10 +128,8 @@ export default function CreateNoteForm({ onNoteCreated, initialContent, initialF
 
     try {
       const newNote = await appwriteCreateNote(newNoteData);
-      if (newNote) {
-        showSuccess('Spark of Genius Capture', 'Your new note has been crystallized in the cloud.');
-        onNoteCreated(newNote);
-      }
+      showSuccess('Spark of Genius Capture', 'Your new note has been crystallized in the cloud.');
+      onNoteCreated(newNote);
       closeOverlay();
     } catch (error: any) {
       console.error('Failed to create note:', error);
@@ -603,4 +601,3 @@ export default function CreateNoteForm({ onNoteCreated, initialContent, initialF
     </>
   );
 }
-

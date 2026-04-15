@@ -18,7 +18,7 @@ export default function TagManager({ selectedTags, onChangeAction }: TagManagerP
     const fetchTags = async () => {
       try {
         const res = await listTags();
-        setTags(res.documents as Tags[]);
+        setTags(res.documents);
       } catch (error: any) {
         console.error('Failed to fetch tags:', error);
       }

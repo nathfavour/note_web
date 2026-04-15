@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Divider, IconButton, Collapse, Avatar, Link, Popover, Tooltip } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, Divider, IconButton, Collapse, Avatar, Link, Popover, Tooltip, Menu, MenuItem, ListItemIcon } from '@mui/material';
 import { Reply as ReplyIcon, ExpandMore, ExpandLess, Edit as EditIcon, Delete as DeleteIcon, MoreVert as MoreIcon, Block as BlockIcon, EmojiEmotionsOutlined } from '@mui/icons-material';
 import { listComments, createComment, getUsersByIds, updateComment, deleteComment, deleteReactionsForTarget } from '@/lib/appwrite';
 import type { Comments, Users } from '@/types/appwrite';
 import { getEffectiveDisplayName, getEffectiveUsername } from '@/lib/utils';
 import { useAuth } from '@/components/ui/AuthContext';
 import { getEcosystemUrl } from '@/constants/ecosystem';
-import { Menu, MenuItem, ListItemIcon } from '@mui/material';
 import NoteReactions from './NoteReactions';
 import { TargetType } from '@/types/appwrite';
 
@@ -29,10 +28,10 @@ function buildCommentTree(flatComments: Comments[]): CommentWithChildren[] {
   });
 
   flatComments.forEach(comment => {
-    if (comment.parentCommentId && commentMap[comment.parentCommentId]) {
-      commentMap[comment.parentCommentId].children.push(commentMap[comment.$id]);
-    } else {
+    if (comment.parentCommentId === null) {
       rootComments.push(commentMap[comment.$id]);
+    } else {
+      commentMap[comment.parentCommentId].children.push(commentMap[comment.$id]);
     }
   });
 
@@ -173,7 +172,7 @@ function CommentItem({ comment, onReply, onUpdate, onDelete, depth = 0, userMap,
         }
       >
         <Avatar
-          src={!isDeleted ? commentUser?.avatar || undefined : undefined}
+          src={!isDeleted ? commentUser.avatar || undefined : undefined}
           sx={{
             width: 32,
             height: 32,
@@ -425,7 +424,7 @@ export default function CommentsSection({ noteId }: CommentsProps) {
 
       // If the user who commented isn't in userMap, we might want to refresh or add them
       // For now, we refresh to be safe or just wait for the user to be there
-      if (!userMap[newCommentDoc.userId]) {
+      if (!Object.hasOwn(userMap, newCommentDoc.userId)) {
         fetchComments();
       }
 
