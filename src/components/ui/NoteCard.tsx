@@ -614,7 +614,7 @@ const NoteCard: React.FC<NoteCardProps> = React.memo(({ note, onUpdate, onDelete
           )}
           
           <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.8, overflow: 'hidden' }}>
-            {note.tags && note.tags.slice(0, 2).map((tag: string, index: number) => (
+            {(note.tags ?? []).slice(0, 2).map((tag: string, index: number) => (
               <Chip
                 key={index}
                 label={tag}

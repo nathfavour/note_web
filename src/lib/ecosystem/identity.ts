@@ -52,9 +52,9 @@ export async function ensureGlobalIdentity(user: any, force = false) {
             databases.getDocument(CONNECT_DATABASE_ID, CONNECT_COLLECTION_ID_USERS, user.$id).catch(() => null)
         ]);
 
-        let username = user.username || prefs?.username || user.name || user.email?.split('@')[0];
+        let username = user.username || prefs?.username || user.name || user.email?.split('@')[0] || '';
         username = String(username).toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '').slice(0, 50);
-        if (!username) username = `user_${user.$id.slice(0, 8)}`;
+        if (!username) username = `user_${String(user.$id || '').slice(0, 8)}`;
 
         const picId = user.avatar || user.profilePicId || user.avatarUrl || prefs?.profilePicId || null;
         const profileData: any = {
@@ -228,7 +228,7 @@ export async function searchGlobalUsers(query: string, limit = 10) {
                         results.push({
                             id: doc.$id,
                             type: 'user' as const,
-                            title: doc.name || doc.email?.split('@')[0] || doc.$id.slice(0, 8),
+                            title: doc.name || doc.email?.split('@')[0] || String(doc.$id || '').slice(0, 8),
                             subtitle: doc.username ? `@${doc.username}` : doc.email,
                             icon: 'person',
                             avatar: doc.avatar || null,

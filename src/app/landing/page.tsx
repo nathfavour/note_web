@@ -57,11 +57,18 @@ export default function LandingPage() {
 
   // Generate user initials from name or email
   const getUserInitials = (user: any): string => {
-    if (user?.name) {
-      return user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+    const name = String(user?.name ?? '').trim();
+    if (name) {
+      return name
+        .split(/\s+/)
+        .map((part: string) => part[0] || '')
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || 'U';
     }
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase();
+    const email = String(user?.email ?? '').trim();
+    if (email) {
+      return email.slice(0, 2).toUpperCase();
     }
     return 'U';
   };

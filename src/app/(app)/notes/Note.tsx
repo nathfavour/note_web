@@ -141,7 +141,7 @@ export default function NoteComponent({
           {/* Tags */}
           {note.tags && note.tags.length > 0 && (
             <Stack direction="row" spacing={0.5} sx={{ mb: 2, flexWrap: 'wrap', gap: 0.5 }}>
-              {note.tags.slice(0, 3).map((tag: string) => (
+              {(note.tags ?? []).slice(0, 3).map((tag: string) => (
                 <Chip
                   key={tag}
                   label={tag}

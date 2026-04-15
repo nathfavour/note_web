@@ -258,7 +258,7 @@ export function TopBarSearch() {
                     )}
                     {note.tags && note.tags.length > 0 && (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {note.tags.slice(0, 3).map((tag: string) => (
+                        {(note.tags ?? []).slice(0, 3).map((tag: string) => (
                           <Chip
                             key={tag}
                             label={tag}
