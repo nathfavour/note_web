@@ -1,0 +1,683 @@
+/**
+ * Kylrix Ecosystem Security Protocol (WESP)
+ * Centralized security and encryption logic for the entire ecosystem.
+ * Hosted by the ID node (Identity Management System).
+ */
+
+import { MeshProtocol } from './mesh';
+import { databases, account } from '../appwrite';
+import { Query, ID } from 'appwrite';
+
+export class EcosystemSecurity {
+  private static instance: EcosystemSecurity;
+  private masterKey: CryptoKey | null = null;
+  private identityKeyPair: CryptoKeyPair | null = null;
+  private isUnlocked = false;
+  private nodeId: string = 'note';
+  // SECURITY: Tab-specific secret (RAM-only) to protect against XSS (CVE-KYL-2026-005)
+  private tabSessionSecret: Uint8Array | null = null;
+
+  // Constants aligned with Kylrix Vault for backward compatibility
+  private static readonly PBKDF2_ITERATIONS = 600000;
+  private static readonly SALT_SIZE = 32;
+  private static readonly IV_SIZE = 16;
+  private static readonly KEY_SIZE = 256;
+
+  private static readonly PIN_ITERATIONS = 100000;
+  private static readonly PIN_SALT_SIZE = 16;
+  private static readonly SESSION_SALT_SIZE = 16;
+
+  static getInstance(): EcosystemSecurity {
+    if (!EcosystemSecurity.instance) {
+      EcosystemSecurity.instance = new EcosystemSecurity();
+    }
+    return EcosystemSecurity.instance;
+  }
+
+  /**
+   * Initialize security for a specific node
+   */
+  init(nodeId: string) {
+    this.nodeId = nodeId;
+    this.listenForMeshDirectives();
+  }
+
+  private listenForMeshDirectives() {
+    if (typeof window === 'undefined') return;
+
+    MeshProtocol.subscribe((msg) => {
+      if (msg.type === 'COMMAND' && msg.payload.action === 'LOCK_SYSTEM') {
+        this.lock();
+      }
+    });
+  }
+
+  private getOrCreateSessionSecret(): Uint8Array {
+    if (typeof window === 'undefined') return new Uint8Array(32);
+    if (!this.tabSessionSecret) {
+      this.tabSessionSecret = crypto.getRandomValues(new Uint8Array(32));
+    }
+    return this.tabSessionSecret;
+  }
+
+  /**
+   * Derive key from password
+   */
+  public async deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(password),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits", "deriveKey"],
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt as any,
+        iterations: EcosystemSecurity.PBKDF2_ITERATIONS,
+        hash: "SHA-256",
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: EcosystemSecurity.KEY_SIZE } as any,
+      true,
+      ["encrypt", "decrypt", "wrapKey", "unwrapKey"],
+    );
+  }
+
+  /**
+   * Generate a random Master Encryption Key (MEK)
+   */
+  public async generateRandomMEK(): Promise<CryptoKey> {
+    return await crypto.subtle.generateKey(
+      {
+        name: "AES-GCM",
+        length: 256,
+      },
+      true,
+      ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    );
+  }
+
+  /**
+   * Wrap MEK with password and salt
+   */
+  public async wrapMEK(mek: CryptoKey, password: string, salt: Uint8Array): Promise<string> {
+    const authKey = await this.deriveKey(password, salt);
+    const mekBytes = await crypto.subtle.exportKey("raw", mek);
+    const iv = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.IV_SIZE));
+
+    const encryptedMek = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      authKey,
+      mekBytes
+    );
+
+    const combined = new Uint8Array(iv.length + encryptedMek.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encryptedMek), iv.length);
+
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  /**
+   * Unwrap MEK with password and salt
+   */
+  public async unwrapMEK(wrappedKeyBase64: string, password: string, saltBase64: string): Promise<CryptoKey> {
+    const salt = new Uint8Array(atob(saltBase64).split("").map(c => c.charCodeAt(0)));
+    const authKey = await this.deriveKey(password, salt);
+
+    const wrappedKeyBytes = new Uint8Array(atob(wrappedKeyBase64).split("").map(c => c.charCodeAt(0)));
+    const iv = wrappedKeyBytes.slice(0, EcosystemSecurity.IV_SIZE);
+    const ciphertext = wrappedKeyBytes.slice(EcosystemSecurity.IV_SIZE);
+
+    const mekBytes = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      authKey,
+      ciphertext
+    );
+
+    return await crypto.subtle.importKey(
+      "raw",
+      mekBytes,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    );
+  }
+
+  /**
+   * Ensure E2E Identity is initialized for a user
+   */
+  public async ensureE2EIdentity(userId: string): Promise<string> {
+    if (!this.masterKey) throw new Error("Security vault locked");
+
+    const PW_DB = "passwordManagerDb";
+    const IDENTITIES_TABLE = "identities";
+    const CHAT_DB = "chat";
+    const CHAT_USERS_TABLE = "profiles";
+
+    try {
+      // 1. Check if identity exists - use unencrypted 'identityType' for querying
+      const identities = await databases.listDocuments(
+        PW_DB,
+        IDENTITIES_TABLE,
+        [Query.equal("userId", userId), Query.equal("identityType", "public_notes")]
+      );
+
+
+      let publicKeyBase64 = "";
+
+      if (identities.total > 0) {
+        // 2. Unwrap private key
+        const identity = identities.documents[0];
+        const wrappedPrivateKey = identity.credentialId;
+        const privateKeyRaw = await this.decrypt(wrappedPrivateKey);
+
+        const privateKey = await crypto.subtle.importKey(
+          "pkcs8",
+          Uint8Array.from(atob(privateKeyRaw), c => c.charCodeAt(0)),
+          { name: "X25519" },
+          true,
+          ["deriveKey", "deriveBits"]
+        );
+
+        const publicKey = await crypto.subtle.importKey(
+          "spki",
+          Uint8Array.from(atob(identity.publicKey), c => c.charCodeAt(0)),
+          { name: "X25519" },
+          true,
+          []
+        );
+
+        this.identityKeyPair = { publicKey, privateKey };
+        publicKeyBase64 = identity.publicKey;
+      } else {
+        // 3. Generate new X25519 pair
+        const keyPair = (await crypto.subtle.generateKey(
+          { name: "X25519" },
+          true,
+          ["deriveKey", "deriveBits"]
+        )) as CryptoKeyPair;
+
+        const privateKeyRaw = await crypto.subtle.exportKey(
+          "pkcs8",
+          keyPair.privateKey
+        );
+        const publicKeyRaw = await crypto.subtle.exportKey(
+          "spki",
+          keyPair.publicKey
+        );
+
+        const privateKeyBase64 = btoa(
+          String.fromCharCode(...new Uint8Array(privateKeyRaw))
+        );
+        publicKeyBase64 = btoa(
+          String.fromCharCode(...new Uint8Array(publicKeyRaw))
+        );
+
+        const wrappedPrivateKey = await this.encrypt(privateKeyBase64);
+
+        // 4. Store in identities
+        await databases.createDocument(PW_DB, IDENTITIES_TABLE, ID.unique(), {
+          userId,
+          identityType: "public_notes",
+          label: "public_notes",
+          publicKey: publicKeyBase64,
+          credentialId: wrappedPrivateKey,
+        });
+
+        this.identityKeyPair = keyPair;
+      }
+
+      // 5. Update chat.users with public key
+      const chatUsers = await databases.listDocuments(
+        CHAT_DB,
+        CHAT_USERS_TABLE,
+        [Query.equal("userId", userId)]
+      );
+
+      if (chatUsers.total > 0) {
+        await databases.updateDocument(
+          CHAT_DB,
+          CHAT_USERS_TABLE,
+          chatUsers.documents[0].$id,
+          { publicKey: publicKeyBase64 }
+        );
+      } else {
+        const currentUser = await account.get();
+        await databases.createDocument(CHAT_DB, CHAT_USERS_TABLE, ID.unique(), {
+          userId,
+          username: (currentUser.email ? currentUser.email.split('@')[0] : 'user') + "_" + userId.slice(0, 4),
+          publicKey: publicKeyBase64,
+          status: "online",
+        });
+      }
+
+      return publicKeyBase64;
+    } catch (error) {
+      console.error("[Security] ensureE2EIdentity failed", error);
+      throw error;
+    }
+  }
+
+  // Import a raw key and set it as the master key
+  async importMasterKey(keyBytes: ArrayBuffer): Promise<boolean> {
+    try {
+      this.masterKey = await crypto.subtle.importKey(
+        "raw",
+        keyBytes,
+        { name: "AES-GCM", length: 256 },
+        true, // Make it extractable
+        ["encrypt", "decrypt", "wrapKey", "unwrapKey"],
+      );
+      this.isUnlocked = true;
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("kylrix_vault_unlocked", "true");
+      }
+      return true;
+    } catch (_e) {
+      console.error("[Security] Failed to import master key", _e);
+      return false;
+    }
+  }
+
+  getMasterKey(): CryptoKey | null {
+    return this.masterKey;
+  }
+
+  async unlock(password: string, keyChainEntry?: any): Promise<boolean> {
+    try {
+      if (!keyChainEntry) return false;
+
+      const salt = new Uint8Array(
+        atob(keyChainEntry.salt).split("").map(c => c.charCodeAt(0))
+      );
+
+      const authKey = await this.deriveKey(password, salt);
+      const wrappedKeyBytes = new Uint8Array(
+        atob(keyChainEntry.wrappedKey).split("").map(c => c.charCodeAt(0))
+      );
+
+      const iv = wrappedKeyBytes.slice(0, EcosystemSecurity.IV_SIZE);
+      const ciphertext = wrappedKeyBytes.slice(EcosystemSecurity.IV_SIZE);
+
+      const mekBytes = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        authKey,
+        ciphertext
+      );
+
+      this.masterKey = await crypto.subtle.importKey(
+        "raw",
+        mekBytes,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+      );
+
+      this.isUnlocked = true;
+
+      return true;
+    } catch (_e: any) {
+      console.error("[Security] Unlock failed", _e);
+      return false;
+    }
+  }
+
+  public async encrypt(data: string): Promise<string> {
+    if (!this.masterKey) throw new Error("Security vault locked");
+    return this.encryptWithKey(data, this.masterKey);
+  }
+
+  public async decrypt(encryptedData: string): Promise<string> {
+    if (!this.masterKey) throw new Error("Security vault locked");
+    return this.decryptWithKey(encryptedData, this.masterKey);
+  }
+
+  public async encryptWithKey(data: string, key: CryptoKey): Promise<string> {
+    const encoder = new TextEncoder();
+    const plaintext = encoder.encode(data);
+    const iv = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.IV_SIZE));
+
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      plaintext,
+    );
+
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  public async decryptWithKey(encryptedData: string, key: CryptoKey): Promise<string> {
+    const combined = new Uint8Array(
+      atob(encryptedData).split("").map((char) => char.charCodeAt(0)),
+    );
+
+    const iv = combined.slice(0, EcosystemSecurity.IV_SIZE);
+    const encrypted = combined.slice(EcosystemSecurity.IV_SIZE);
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      encrypted,
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  }
+
+  /**
+   * T4: Wrap a symmetric key for a specific public identity (X25519)
+   */
+  public async wrapKeyForIdentity(symmetricKey: CryptoKey, recipientPublicKeyBase64: string): Promise<string> {
+    if (!this.identityKeyPair) throw new Error("Identity not initialized");
+
+    const recipientPublicKey = await crypto.subtle.importKey(
+      "spki",
+      new Uint8Array(atob(recipientPublicKeyBase64).split("").map(c => c.charCodeAt(0))),
+      { name: "X25519" },
+      true,
+      []
+    );
+
+    // Derive shared secret
+    const sharedSecret = await crypto.subtle.deriveBits(
+      { name: "X25519", public: recipientPublicKey },
+      this.identityKeyPair.privateKey,
+      256
+    );
+
+    const wrappingKey = await crypto.subtle.importKey(
+      "raw",
+      sharedSecret,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["wrapKey"]
+    );
+
+    const iv = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.IV_SIZE));
+    const wrappedKey = await crypto.subtle.wrapKey(
+      "raw",
+      symmetricKey,
+      wrappingKey,
+      { name: "AES-GCM", iv }
+    );
+
+    const combined = new Uint8Array(iv.length + wrappedKey.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(wrappedKey), iv.length);
+
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  /**
+   * T4: Unwrap a symmetric key using own identity and sender's public key
+   */
+  public async unwrapKeyForIdentity(wrappedKeyBase64: string, senderPublicKeyBase64: string): Promise<CryptoKey> {
+    if (!this.identityKeyPair) throw new Error("Identity not initialized");
+
+    const senderPublicKey = await crypto.subtle.importKey(
+      "spki",
+      new Uint8Array(atob(senderPublicKeyBase64).split("").map(c => c.charCodeAt(0))),
+      { name: "X25519" },
+      true,
+      []
+    );
+
+    const sharedSecret = await crypto.subtle.deriveBits(
+      { name: "X25519", public: senderPublicKey },
+      this.identityKeyPair.privateKey,
+      256
+    );
+
+    const unwrappingKey = await crypto.subtle.importKey(
+      "raw",
+      sharedSecret,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["unwrapKey"]
+    );
+
+    const combined = new Uint8Array(atob(wrappedKeyBase64).split("").map(c => c.charCodeAt(0)));
+    const iv = combined.slice(0, EcosystemSecurity.IV_SIZE);
+    const ciphertext = combined.slice(EcosystemSecurity.IV_SIZE);
+
+    return await crypto.subtle.unwrapKey(
+      "raw",
+      ciphertext,
+      unwrappingKey,
+      { name: "AES-GCM", iv },
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  /**
+   * Alias for setupPinVerifier that returns success status
+   */
+  async setupPin(pin: string): Promise<boolean> {
+    try {
+      await this.setupPinVerifier(pin);
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Phase 1: Setup PIN Verifier (Disk-Bound)
+   * Stores { PinSalt, PinHash } in localStorage.
+   */
+  async setupPinVerifier(pin: string): Promise<void> {
+    if (typeof window === "undefined") return;
+
+    const salt = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.PIN_SALT_SIZE));
+    const hash = await this.derivePinHash(pin, salt);
+
+    const verifier = {
+      salt: btoa(String.fromCharCode(...salt)),
+      hash: btoa(String.fromCharCode(...new Uint8Array(hash))),
+    };
+
+    localStorage.setItem("kylrix_pin_verifier", JSON.stringify(verifier));
+  }
+
+  /**
+   * Phase 2: Ephemeral Wrap (RAM-Bound)
+   * Wraps the MEK with an ephemeral key derived from PIN and SessionSalt.
+   * Stores in sessionStorage.
+   */
+  async piggybackSession(pin: string): Promise<void> {
+    if (!this.masterKey || typeof window === "undefined") return;
+
+    const sessionSalt = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.SESSION_SALT_SIZE));
+    const ephemeralKey = await this.deriveEphemeralKey(pin, sessionSalt);
+
+    const rawMek = await crypto.subtle.exportKey("raw", this.masterKey);
+    const iv = crypto.getRandomValues(new Uint8Array(EcosystemSecurity.IV_SIZE));
+
+    const wrappedMek = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      ephemeralKey,
+      rawMek
+    );
+
+    const combined = new Uint8Array(iv.length + wrappedMek.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(wrappedMek), iv.length);
+
+    const ephemeralData = {
+      wrappedMek: btoa(String.fromCharCode(...combined)),
+      sessionSalt: btoa(String.fromCharCode(...sessionSalt)),
+    };
+
+    sessionStorage.setItem("kylrix_ephemeral_session", JSON.stringify(ephemeralData));
+  }
+
+  /**
+   * Verify PIN without necessarily unlocking the full system
+   */
+  async verifyPin(pin: string): Promise<boolean> {
+    const verifierStr = localStorage.getItem("kylrix_pin_verifier");
+    if (!verifierStr) return false;
+
+    try {
+      const { salt: saltBase64, hash: expectedHash } = JSON.parse(verifierStr);
+      const salt = new Uint8Array(atob(saltBase64).split("").map(c => c.charCodeAt(0)));
+      const actualHash = btoa(String.fromCharCode(...new Uint8Array(await this.derivePinHash(pin, salt))));
+      return actualHash === expectedHash;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Phase 3: Unlock Session with PIN
+   * Reconstructs the MEK from ephemeral RAM using the PIN.
+   */
+  async unlockWithPin(pin: string): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+
+    const verifierStr = localStorage.getItem("kylrix_pin_verifier");
+    const ephemeralStr = sessionStorage.getItem("kylrix_ephemeral_session");
+
+    if (!verifierStr || !ephemeralStr) return false;
+
+    try {
+      // 1. Verify PIN against disk verifier
+      const verifier = JSON.parse(verifierStr);
+      const salt = new Uint8Array(atob(verifier.salt).split("").map(c => c.charCodeAt(0)));
+      const expectedHash = verifier.hash;
+      const actualHash = btoa(String.fromCharCode(...new Uint8Array(await this.derivePinHash(pin, salt))));
+
+      if (actualHash !== expectedHash) {
+        return false;
+      }
+
+      // 2. Unwrap MEK from ephemeral storage
+      const ephemeral = JSON.parse(ephemeralStr);
+      const sessionSalt = new Uint8Array(atob(ephemeral.sessionSalt).split("").map(c => c.charCodeAt(0)));
+      const ephemeralKey = await this.deriveEphemeralKey(pin, sessionSalt);
+
+      const wrappedMekBytes = new Uint8Array(atob(ephemeral.wrappedMek).split("").map(c => c.charCodeAt(0)));
+      const iv = wrappedMekBytes.slice(0, EcosystemSecurity.IV_SIZE);
+      const ciphertext = wrappedMekBytes.slice(EcosystemSecurity.IV_SIZE);
+
+      const rawMek = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        ephemeralKey,
+        ciphertext
+      );
+
+      this.masterKey = await crypto.subtle.importKey(
+        "raw",
+        rawMek,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+      );
+
+      this.isUnlocked = true;
+      return true;
+    } catch (_e: any) {
+      console.error("[Security] PIN unlock failed", _e);
+      return false;
+    }
+  }
+
+  /**
+   * Remove PIN verifier
+   */
+  wipePin(): void {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("kylrix_pin_verifier");
+  }
+
+  isPinSet(): boolean {
+    if (typeof window === "undefined") return false;
+    return !!localStorage.getItem("kylrix_pin_verifier");
+  }
+
+  private async derivePinHash(pin: string, salt: Uint8Array): Promise<ArrayBuffer> {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(pin),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits"]
+    );
+
+    return crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt as any,
+        iterations: EcosystemSecurity.PIN_ITERATIONS,
+        hash: "SHA-256",
+      },
+      keyMaterial,
+      256
+    );
+  }
+
+  private async deriveEphemeralKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const sessionSecret = this.getOrCreateSessionSecret();
+
+    // Mix PIN with tab-specific Session Secret for entropy (XSS-safe)
+    const pinBytes = encoder.encode(pin);
+    const combined = new Uint8Array(pinBytes.length + sessionSecret.length);
+    combined.set(pinBytes);
+    combined.set(sessionSecret, pinBytes.length);
+
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      combined,
+      { name: "PBKDF2" },
+      false,
+      ["deriveKey"]
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt as any,
+        iterations: 10000, // Optimized for instant (<20ms) unlock speed
+        hash: "SHA-256",
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 } as any,
+      false, // SECURITY: Non-extractable. Key cannot be exported by XSS.
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  lock() {
+    this.masterKey = null;
+    this.isUnlocked = false;
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("kylrix_vault_unlocked");
+      // We DO NOT remove kylrix_ephemeral_session here, 
+      // as the PIN is meant to unlock the system when it's locked.
+      // It should only be purged on "Purge" (tab close/process exit).
+    }
+  }
+
+  get status() {
+    return {
+      isUnlocked: this.isUnlocked,
+      hasKey: !!this.masterKey,
+      hasIdentity: !!this.identityKeyPair
+    };
+  }
+}
+
+export const ecosystemSecurity = EcosystemSecurity.getInstance();
