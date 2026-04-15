@@ -3,11 +3,13 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { Client, Account } from 'appwrite';
 import { 
+  calculateSubscriptionPrice,
+  PPP_DATA
+} from '../ppp';
+import type { 
   SubscriptionTier, 
   PaymentMethod, 
-  RegionConfig, 
-  PPP_DATA, 
-  calculateSubscriptionPrice 
+  RegionConfig
 } from '../ppp';
 
 interface SubscriptionState {

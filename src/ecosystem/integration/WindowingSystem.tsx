@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Box, Paper, IconButton, Typography, Stack, alpha } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 

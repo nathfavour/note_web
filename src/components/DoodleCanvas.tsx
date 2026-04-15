@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { DoodleStroke } from '@/types/notes';
+import type { DoodleStroke } from '@/types/notes';
 import { 
   Box, 
   Typography, 
@@ -473,5 +473,4 @@ export default function DoodleCanvas({ initialData, onSave, onClose }: DoodleCan
     </Dialog>
   );
 }
-
 

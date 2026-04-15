@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentUser, getUser, createUser, updateUser, account } from '@/lib/appwrite';
 import { getEffectiveUsername } from '@/lib/utils';

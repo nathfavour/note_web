@@ -27,7 +27,7 @@ import {
   Label as LabelIcon,
   AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
-import { Tags } from '@/types/appwrite';
+import type { Tags } from '@/types/appwrite';
 import { listTags, createTag, updateTag, deleteTag, updateNote } from '@/lib/appwrite';
 import { useAuth } from '@/components/ui/AuthContext';
 import { formatDateWithFallback } from '@/lib/date-utils';
@@ -656,4 +656,3 @@ export default function TagsPage() {
     </Box>
   );
 }
-

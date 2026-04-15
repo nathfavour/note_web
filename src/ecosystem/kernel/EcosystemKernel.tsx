@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Box, Paper, IconButton, Typography, Stack, alpha, Tooltip } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -37,7 +38,8 @@ const PremiumIcon = ({ name, size = 18, color = 'currentColor' }: { name: string
   return <IconComponent size={size} color={color} strokeWidth={1.5} />;
 };
 import { getEcosystemUrl as _getEcosystemUrl } from '@/constants/ecosystem';
-import { MeshProtocol, MeshMessage, NodeIdentity } from '@/lib/ecosystem/mesh';
+import { MeshProtocol } from '@/lib/ecosystem/mesh';
+import type { MeshMessage, NodeIdentity } from '@/lib/ecosystem/mesh';
 import { ecosystemSecurity } from '@/lib/ecosystem/security';
 
 /**

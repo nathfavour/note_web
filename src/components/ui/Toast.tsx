@@ -1,7 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useCallback, ReactNode } from 'react';
-import { useIsland, IslandType } from './DynamicIsland';
+import React, { createContext, useContext, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { useIsland } from './DynamicIsland';
+import type { IslandType } from './DynamicIsland';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 

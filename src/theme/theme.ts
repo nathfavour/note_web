@@ -1,4 +1,5 @@
-import { createTheme, ThemeOptions, alpha } from '@mui/material/styles';
+import { createTheme, alpha } from '@mui/material/styles';
+import type { ThemeOptions } from '@mui/material/styles';
 
 const SURFACE_BACKGROUND = '#000000';
 const SURFACE = '#161514';

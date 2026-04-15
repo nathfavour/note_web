@@ -28,7 +28,7 @@ import {
   Person as PersonIcon,
   Download as DownloadIcon
 } from '@mui/icons-material';
-import { Extensions } from '@/types/appwrite';
+import type { Extensions } from '@/types/appwrite';
 import { listExtensions, createExtension, updateExtension, getCurrentUser } from '@/lib/appwrite';
 
 interface ExtensionTemplate {

@@ -1,4 +1,4 @@
-import { Notes } from "@/types/appwrite";
+import type { Notes } from "@/types/appwrite";
 
 export async function generateAIAction(note: Notes, action: 'summarize' | 'grammar' | 'expand') {
   const systemInstructions = {

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Backdrop, CircularProgress, Typography, Box } from '@mui/material';
 
 interface LoadingContextType {

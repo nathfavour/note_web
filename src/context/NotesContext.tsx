@@ -1,7 +1,8 @@
 "use client";
 
 
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { 
   listNotesPaginated, 
   getPinnedNoteIds, 

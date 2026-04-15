@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { Box, Typography, Stack, IconButton, useTheme, useMediaQuery, Button } from '@mui/material';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { usePathname } from 'next/navigation';

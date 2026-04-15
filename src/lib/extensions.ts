@@ -1,4 +1,4 @@
-import { Extensions } from '@/types/appwrite';
+import type { Extensions } from '@/types/appwrite';
 import { createExtension, updateExtension, listExtensions, getCurrentUser } from '@/lib/appwrite';
 
 export interface ExtensionHook {

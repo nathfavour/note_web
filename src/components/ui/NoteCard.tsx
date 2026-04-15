@@ -14,7 +14,7 @@ import { useDynamicSidebar } from './DynamicSidebar';
 import { NoteDetailSidebar } from './NoteDetailSidebar';
 import { useNotes } from '@/context/NotesContext';
 import type { Notes } from '@/types/appwrite';
-import { DoodleStroke } from '@/types/notes';
+import type { DoodleStroke } from '@/types/notes';
 import {
   Delete as TrashIcon,
   AttachFile as AttachFileIcon,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Notes } from '@/types/appwrite';
+import type { Notes } from '@/types/appwrite';
 import { formatNoteCreatedDate } from '@/lib/date-utils';
 import { useNotes } from '@/context/NotesContext';
 import { useSearch } from '@/hooks/useSearch';

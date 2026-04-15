@@ -21,7 +21,8 @@ import {
   SmartToy as RobotIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
-import { useAI, AIChatMessage } from '@/hooks/useAI';
+import { useAI } from '@/hooks/useAI';
+import type { AIChatMessage } from '@/hooks/useAI';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Transition = React.forwardRef(function Transition(

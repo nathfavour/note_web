@@ -14,6 +14,7 @@ const config = defineConfig({
       'next/link': fileURLToPath(new URL('./src/compat/next-link.tsx', import.meta.url)),
       'next/image': fileURLToPath(new URL('./src/compat/next-image.tsx', import.meta.url)),
       'next/dynamic': fileURLToPath(new URL('./src/compat/next-dynamic.tsx', import.meta.url)),
+      'tiny-secp256k1': fileURLToPath(new URL('./src/compat/tiny-secp256k1.ts', import.meta.url)),
     },
     tsconfigPaths: true,
   },

@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ECOSYSTEM_APPS, getEcosystemUrl } from '@/constants/ecosystem';
-import Logo, { KylrixApp } from './Logo';
+import Logo from './Logo';
+import type { KylrixApp } from './Logo';
 
 interface EcosystemPortalProps {
     open?: boolean;

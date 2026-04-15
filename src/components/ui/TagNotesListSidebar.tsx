@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Notes, Tags } from '@/types/appwrite';
+import type { Notes, Tags } from '@/types/appwrite';
 import { getNotesByTag } from '@/lib/appwrite';
 import { Box, Typography, IconButton, Stack, Alert } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -188,4 +188,3 @@ export function TagNotesListSidebar({
     </Box>
   );
 }
-

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useMemo } from 'react';
-import { DoodleStroke } from '@/types/notes';
+import type { DoodleStroke } from '@/types/notes';
 import { Box, Typography, alpha } from '@mui/material';
 import { Brush as BrushIcon } from '@mui/icons-material';
 
@@ -149,4 +149,3 @@ export function NoteContentDisplay({
 }
 
 export default NoteContentDisplay;
-

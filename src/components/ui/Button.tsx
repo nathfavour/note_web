@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button as MuiButton, ButtonProps as MuiButtonProps, CircularProgress } from '@mui/material';
+import { Button as MuiButton, CircularProgress } from '@mui/material';
+import type { ButtonProps as MuiButtonProps } from '@mui/material';
 
 export interface ButtonProps extends MuiButtonProps {
   isLoading?: boolean;
@@ -71,4 +72,3 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = 'Button';
 
 export { Button };
-

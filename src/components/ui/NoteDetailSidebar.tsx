@@ -2,7 +2,7 @@
 
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Notes } from '@/types/appwrite';
+import type { Notes } from '@/types/appwrite';
 import dynamic from 'next/dynamic';
 
 const DoodleCanvas = dynamic(() => import('@/components/DoodleCanvas'), { ssr: false });

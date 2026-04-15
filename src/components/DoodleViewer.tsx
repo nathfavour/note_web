@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { DoodleStroke } from '@/types/notes';
+import type { DoodleStroke } from '@/types/notes';
 import { Box, Typography, Button, Paper, alpha } from '@mui/material';
 import { Edit as EditIcon, Brush as BrushIcon } from '@mui/icons-material';
 
@@ -138,5 +138,4 @@ export default function DoodleViewer({ data, onEdit, title }: DoodleViewerProps)
     </Box>
   );
 }
-
 
