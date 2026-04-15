@@ -201,7 +201,7 @@ export default function ExtensionsPage() {
 
   const handleToggleExtension = async (extension: Extensions) => {
     try {
-      await updateExtension(extension.$id!, {
+      await updateExtension(extension.$id, {
         enabled: !extension.enabled
       });
       await loadExtensions();
