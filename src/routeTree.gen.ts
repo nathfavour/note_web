@@ -9,12 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as TagsRouteImport } from './routes/tags'
 import { Route as SharedRouteImport } from './routes/shared'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetRouteImport } from './routes/reset'
 import { Route as PopoutRouteImport } from './routes/popout'
 import { Route as PitchRouteImport } from './routes/pitch'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as MasterpassRouteImport } from './routes/masterpass'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -25,6 +28,11 @@ import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
 import { Route as SharedNoteidKeyRouteImport } from './routes/shared/$noteid/$key'
 import { Route as NotesIdAttachmentIdRouteImport } from './routes/notes.$id.$attachmentId'
 
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TagsRoute = TagsRouteImport.update({
   id: '/tags',
   path: '/tags',
@@ -40,6 +48,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetRoute = ResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PopoutRoute = PopoutRouteImport.update({
   id: '/popout',
   path: '/popout',
@@ -53,6 +66,11 @@ const PitchRoute = PitchRouteImport.update({
 const NotesRoute = NotesRouteImport.update({
   id: '/notes',
   path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterpassRoute = MasterpassRouteImport.update({
+  id: '/masterpass',
+  path: '/masterpass',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LandingRoute = LandingRouteImport.update({
@@ -106,12 +124,15 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/extensions': typeof ExtensionsRoute
   '/landing': typeof LandingRoute
+  '/masterpass': typeof MasterpassRoute
   '/notes': typeof NotesRouteWithChildren
   '/pitch': typeof PitchRoute
   '/popout': typeof PopoutRoute
+  '/reset': typeof ResetRoute
   '/settings': typeof SettingsRoute
   '/shared': typeof SharedRouteWithChildren
   '/tags': typeof TagsRoute
+  '/verify': typeof VerifyRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
@@ -123,12 +144,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/extensions': typeof ExtensionsRoute
   '/landing': typeof LandingRoute
+  '/masterpass': typeof MasterpassRoute
   '/notes': typeof NotesRouteWithChildren
   '/pitch': typeof PitchRoute
   '/popout': typeof PopoutRoute
+  '/reset': typeof ResetRoute
   '/settings': typeof SettingsRoute
   '/shared': typeof SharedRouteWithChildren
   '/tags': typeof TagsRoute
+  '/verify': typeof VerifyRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
@@ -141,12 +165,15 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/extensions': typeof ExtensionsRoute
   '/landing': typeof LandingRoute
+  '/masterpass': typeof MasterpassRoute
   '/notes': typeof NotesRouteWithChildren
   '/pitch': typeof PitchRoute
   '/popout': typeof PopoutRoute
+  '/reset': typeof ResetRoute
   '/settings': typeof SettingsRoute
   '/shared': typeof SharedRouteWithChildren
   '/tags': typeof TagsRoute
+  '/verify': typeof VerifyRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
@@ -160,12 +187,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/extensions'
     | '/landing'
+    | '/masterpass'
     | '/notes'
     | '/pitch'
     | '/popout'
+    | '/reset'
     | '/settings'
     | '/shared'
     | '/tags'
+    | '/verify'
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
@@ -177,12 +207,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/extensions'
     | '/landing'
+    | '/masterpass'
     | '/notes'
     | '/pitch'
     | '/popout'
+    | '/reset'
     | '/settings'
     | '/shared'
     | '/tags'
+    | '/verify'
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
@@ -194,12 +227,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/extensions'
     | '/landing'
+    | '/masterpass'
     | '/notes'
     | '/pitch'
     | '/popout'
+    | '/reset'
     | '/settings'
     | '/shared'
     | '/tags'
+    | '/verify'
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
@@ -212,16 +248,26 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   ExtensionsRoute: typeof ExtensionsRoute
   LandingRoute: typeof LandingRoute
+  MasterpassRoute: typeof MasterpassRoute
   NotesRoute: typeof NotesRouteWithChildren
   PitchRoute: typeof PitchRoute
   PopoutRoute: typeof PopoutRoute
+  ResetRoute: typeof ResetRoute
   SettingsRoute: typeof SettingsRoute
   SharedRoute: typeof SharedRouteWithChildren
   TagsRoute: typeof TagsRoute
+  VerifyRoute: typeof VerifyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tags': {
       id: '/tags'
       path: '/tags'
@@ -243,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset': {
+      id: '/reset'
+      path: '/reset'
+      fullPath: '/reset'
+      preLoaderRoute: typeof ResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/popout': {
       id: '/popout'
       path: '/popout'
@@ -262,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/notes'
       fullPath: '/notes'
       preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/masterpass': {
+      id: '/masterpass'
+      path: '/masterpass'
+      fullPath: '/masterpass'
+      preLoaderRoute: typeof MasterpassRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/landing': {
@@ -389,12 +449,15 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   ExtensionsRoute: ExtensionsRoute,
   LandingRoute: LandingRoute,
+  MasterpassRoute: MasterpassRoute,
   NotesRoute: NotesRouteWithChildren,
   PitchRoute: PitchRoute,
   PopoutRoute: PopoutRoute,
+  ResetRoute: ResetRoute,
   SettingsRoute: SettingsRoute,
   SharedRoute: SharedRouteWithChildren,
   TagsRoute: TagsRoute,
+  VerifyRoute: VerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
