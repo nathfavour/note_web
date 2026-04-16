@@ -23,6 +23,10 @@ function bigIntTo32Bytes(value: bigint): Uint8Array {
   return Uint8Array.from(hex.match(/.{1,2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? [])
 }
 
+function normalizeScalar(value: Uint8Array | Buffer): bigint {
+  return bytesToBigInt(toBytes(value)) % CURVE_N
+}
+
 function pointFromInput(point: Uint8Array | Buffer): Point {
   return Point.fromBytes(toBytes(point))
 }
@@ -41,6 +45,21 @@ export function isPoint(point: Uint8Array | Buffer): boolean {
   }
 }
 
+export function isXOnlyPoint(point: Uint8Array | Buffer): boolean {
+  const xOnly = toBytes(point)
+  if (xOnly.length !== 32) return false
+
+  const even = new Uint8Array(33)
+  even[0] = 0x02
+  even.set(xOnly, 1)
+
+  const odd = new Uint8Array(33)
+  odd[0] = 0x03
+  odd.set(xOnly, 1)
+
+  return isPoint(even) || isPoint(odd)
+}
+
 export function pointFromScalar(privateKey: Uint8Array | Buffer, compressed = true): Uint8Array | null {
   const key = toBytes(privateKey)
   if (!isPrivate(key)) return null
@@ -51,7 +70,8 @@ export function pointFromScalar(privateKey: Uint8Array | Buffer, compressed = tr
 export function pointAddScalar(point: Uint8Array | Buffer, tweak: Uint8Array | Buffer, compressed = true): Uint8Array | null {
   if (!isPoint(point)) return null
   const base = pointFromInput(point)
-  const tweaked = base.add(Point.BASE.multiply(bytesToBigInt(toBytes(tweak))))
+  const scalar = normalizeScalar(tweak)
+  const tweaked = scalar === 0n ? base : base.add(Point.BASE.multiply(scalar))
   return new Uint8Array(tweaked.toBytes(compressed))
 }
 
@@ -63,7 +83,7 @@ export function pointAdd(pointA: Uint8Array | Buffer, pointB: Uint8Array | Buffe
 
 export function pointMultiply(point: Uint8Array | Buffer, tweak: Uint8Array | Buffer, compressed = true): Uint8Array | null {
   if (!isPoint(point)) return null
-  const result = pointFromInput(point).multiply(bytesToBigInt(toBytes(tweak)))
+  const result = pointFromInput(point).multiply(normalizeScalar(tweak))
   return new Uint8Array(result.toBytes(compressed))
 }
 
@@ -74,14 +94,14 @@ export function pointCompress(point: Uint8Array | Buffer, compressed = true): Ui
 
 export function privateAdd(privateKey: Uint8Array | Buffer, tweak: Uint8Array | Buffer): Uint8Array | null {
   if (!isPrivate(privateKey)) return null
-  const sum = (bytesToBigInt(toBytes(privateKey)) + bytesToBigInt(toBytes(tweak))) % CURVE_N
+  const sum = (bytesToBigInt(toBytes(privateKey)) + normalizeScalar(tweak)) % CURVE_N
   if (sum === 0n) return null
   return bigIntTo32Bytes(sum)
 }
 
 export function privateSub(privateKey: Uint8Array | Buffer, tweak: Uint8Array | Buffer): Uint8Array | null {
   if (!isPrivate(privateKey)) return null
-  const diff = (bytesToBigInt(toBytes(privateKey)) - bytesToBigInt(toBytes(tweak))) % CURVE_N
+  const diff = (bytesToBigInt(toBytes(privateKey)) - normalizeScalar(tweak)) % CURVE_N
   if (diff === 0n) return null
   return bigIntTo32Bytes(diff)
 }
@@ -119,7 +139,7 @@ export function xOnlyPointFromScalar(privateKey: Uint8Array | Buffer): Uint8Arra
   return publicKey ? publicKey.slice(1) : null
 }
 
-export function xOnlyPointAddTweak(xOnlyPoint: Uint8Array | Buffer, tweak: Uint8Array | Buffer): [Uint8Array, number] | null {
+export function xOnlyPointAddTweak(xOnlyPoint: Uint8Array | Buffer, tweak: Uint8Array | Buffer): { xOnlyPubkey: Uint8Array; parity: number } | null {
   const xOnly = toBytes(xOnlyPoint)
   if (xOnly.length !== 32) return null
   const full = new Uint8Array(33)
@@ -127,7 +147,7 @@ export function xOnlyPointAddTweak(xOnlyPoint: Uint8Array | Buffer, tweak: Uint8
   full.set(xOnly, 1)
   const tweaked = pointAddScalar(full, tweak, true)
   if (!tweaked) return null
-  return [tweaked.slice(1), tweaked[0] === 0x03 ? 1 : 0]
+  return { xOnlyPubkey: tweaked.slice(1), parity: tweaked[0] === 0x03 ? 1 : 0 }
 }
 
 export function xOnlyPointFromPointLike(point: Uint8Array | Buffer): [Uint8Array, number] | null {
@@ -146,6 +166,7 @@ export function ecdh(privateKey: Uint8Array | Buffer, publicKey: Uint8Array | Bu
 }
 
 export default {
+  isXOnlyPoint,
   isPoint,
   isPrivate,
   pointAdd,

@@ -1,16 +1,17 @@
 import { ID, Permission, Query, Role } from 'appwrite';
-import { Buffer } from 'buffer';
 import { HDNodeWallet } from 'ethers';
 import * as bip39 from 'bip39';
 import { BIP32Factory } from 'bip32';
 import * as bitcoin from 'bitcoinjs-lib';
-import * as ecc from 'tiny-secp256k1';
+import * as tinySecp256k1 from 'tiny-secp256k1';
 import { Keypair } from '@solana/web3.js';
 import { Ed25519Keypair as SuiEd25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { databases as tablesDB } from '../appwrite';
 import { APPWRITE_CONFIG } from '../appwrite/config';
 import { ecosystemSecurity } from '../ecosystem/security';
 import { updateUser } from '../appwrite';
+
+const ecc = (tinySecp256k1 as typeof tinySecp256k1 & { default?: typeof tinySecp256k1 }).default ?? tinySecp256k1;
 
 bitcoin.initEccLib(ecc);
 
@@ -216,7 +217,7 @@ const deriveAddress = async (
         }
         case 'solana': {
             const seed = bip39.mnemonicToSeedSync(root.mnemonic);
-            const derivedSeed = Buffer.from(seed).subarray(0, 32);
+            const derivedSeed = Uint8Array.from(seed).slice(0, 32);
             if (derivedSeed.length < 32) {
                 throw new Error('Failed to derive Solana seed');
             }
@@ -228,7 +229,7 @@ const deriveAddress = async (
             const seed = bip39.mnemonicToSeedSync(root.mnemonic);
             const node = bip32.fromSeed(seed, bitcoin.networks.bitcoin).derivePath("m/84'/0'/0'/0/0");
             const payment = bitcoin.payments.p2wpkh({
-                pubkey: Buffer.from(node.publicKey),
+                pubkey: node.publicKey,
                 network: bitcoin.networks.bitcoin,
             });
 
