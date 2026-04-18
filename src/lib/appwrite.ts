@@ -120,6 +120,32 @@ patchAccountMethod('updateEmail');
 patchAccountMethod('updatePhone');
 patchAccountMethod('updatePassword');
 
+(account as any).get = async () => {
+  if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
+    return currentUserCache.user;
+  }
+  const persistent = readPersistentCurrentUserCache();
+  if (persistent) {
+    currentUserCache = persistent;
+    return persistent.user;
+  }
+  if (currentUserInFlight) {
+    return currentUserInFlight;
+  }
+
+  currentUserInFlight = withTimeout(originalAccountGet(), CURRENT_USER_REQUEST_TIMEOUT)
+    .then((user) => setCachedCurrentUser(user as unknown as Users))
+    .catch(() => {
+      clearCurrentUserCache();
+      return null;
+    })
+    .finally(() => {
+      currentUserInFlight = null;
+    });
+
+  return currentUserInFlight;
+};
+
 // export app public uri
  export const APP_URI = process.env.NEXT_PUBLIC_APP_URI ?? `https://app.${APPWRITE_CONFIG.SYSTEM.DOMAIN}`;
 
@@ -624,8 +650,11 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
     if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
       return currentUserCache.user;
     }
-    const persistent = getCachedCurrentUser();
-    if (persistent) return persistent;
+    const persistent = readPersistentCurrentUserCache();
+    if (persistent) {
+      currentUserCache = persistent;
+      return persistent.user;
+    }
   }
 
   if (!force && currentUserInFlight) {
