@@ -1,6 +1,6 @@
 import { Client, TablesDB, ID, Query, type Models, Permission, Role } from 'appwrite';
-import type { DatabaseHandle, DatabaseId, DatabaseTableMap, DatabaseTables, QueryBuilder, QueryValue, PermissionBuilder, RoleBuilder, RoleString } from './types';
-import { PROJECT_ID, ENDPOINT } from './constants';
+import type { DatabaseHandle, DatabaseId, DatabaseTableMap, DatabaseTables, QueryBuilder, QueryValue, PermissionBuilder, RoleBuilder, RoleString } from './types.js';
+import { PROJECT_ID, ENDPOINT } from './constants.js';
 
 const createQueryBuilder = <T>(): QueryBuilder<T> => ({
   equal: (field, value) => Query.equal(String(field), value as QueryValue),
