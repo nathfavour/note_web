@@ -58,7 +58,7 @@ import { ecosystemSecurity } from '@/lib/ecosystem/security';
 
 const VOID = '#000000';
 const SURFACE = '#0A0908';
-const SURFACE_ELEVATED = '#161412';
+const SURFACE_ELEVATED = '#050505';
 const BORDER = 'rgba(255, 255, 255, 0.08)';
 const BORDER_SUBTLE = 'rgba(255, 255, 255, 0.05)';
 
@@ -269,13 +269,17 @@ export function NoteDetailSidebar({
   const handleOpenFullPage = () => {
     if (!liveNote.$id) return;
     if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(
-        `note_detail_handoff_${liveNote.$id}`,
-        JSON.stringify({
-          note: liveNote,
-          openedAt: Date.now(),
-        })
-      );
+      try {
+        window.sessionStorage.setItem(
+          `note_detail_handoff_${liveNote.$id}`,
+          JSON.stringify({
+            note: liveNote,
+            openedAt: Date.now(),
+          })
+        );
+      } catch (error) {
+        console.warn('Failed to store note handoff:', error);
+      }
     }
     closeSidebar();
     router.push(`/notes/${liveNote.$id}`);
