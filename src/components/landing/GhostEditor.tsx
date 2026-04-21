@@ -819,12 +819,24 @@ export const GhostEditor = () => {
         const updatedHistory = prevNotes.filter((note) => note.id !== noteId);
         saveHistory(updatedHistory);
         setContextMenu(null);
-    }, [prevNotes]);
+    }, [prevNotes, saveHistory]);
+
+    const handleDeleteAll = useCallback(() => {
+        const confirmDelete = window.confirm('This will clear your entire local stash. You will lose access to manage these notes. Proceed?');
+        if (!confirmDelete) {
+            return;
+        }
+
+        saveHistory([]);
+        setContextMenu(null);
+        toast.success('All sparks cleared');
+    }, [saveHistory]);
 
     const handleOpenIDMWindow = useCallback(() => openIDMWindow(), [openIDMWindow]);
 
     const activeSparks = useMemo(() => prevNotes.filter(n => new Date(n.expiresAt).getTime() > Date.now()), [prevNotes]);
     const staleSparks = useMemo(() => prevNotes.filter(n => new Date(n.expiresAt).getTime() <= Date.now()), [prevNotes]);
+    const hasHistory = prevNotes.length > 0;
 
     return (
         <Container maxWidth="lg" sx={{ py: 2, position: 'relative' }}>
