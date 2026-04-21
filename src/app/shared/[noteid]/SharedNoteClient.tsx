@@ -64,7 +64,6 @@ import { EcosystemPortal } from '@/components/common/EcosystemPortal';
 import { useDataNexus } from '@/context/DataNexusContext';
 import { ecosystemSecurity } from '@/lib/ecosystem/security';
 import { decryptGhostData } from '@/lib/encryption/ghost-crypto';
-import { useParams } from '@/compat/next-navigation';
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
@@ -74,6 +73,7 @@ const spin = keyframes`
 interface SharedNoteClientProps {
    noteId: string;
    initialKey?: string;
+   initialNote?: Notes | null;
 }
 
 function decodeUrlSafeBase64ToBuffer(key: string): Uint8Array {
@@ -320,14 +320,12 @@ function SharedNoteHeader({ onRefresh, isRefreshing }: SharedNoteHeaderProps) {
   );
 }
 
-export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClientProps) {
-  const params = useParams() as { key?: string | string[] };
-  const routeKey = Array.isArray(params.key) ? params.key.join('/') : params.key;
-  const key = initialKey || routeKey;
-  const [verifiedNote, setVerifiedNote] = useState<Notes | null>(null);
+export default function SharedNoteClient({ noteId, initialKey, initialNote }: SharedNoteClientProps) {
+  const key = initialKey;
+  const [verifiedNote, setVerifiedNote] = useState<Notes | null>(initialNote ?? null);
   const [authorProfile, setAuthorProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoadingNote, setIsLoadingNote] = useState(true);
+  const [isLoadingNote, setIsLoadingNote] = useState(!initialNote);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [alreadyDuplicated, setAlreadyDuplicated] = useState(false);
