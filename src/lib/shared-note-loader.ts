@@ -80,7 +80,7 @@ export async function loadSharedNote(noteId: string, key?: string): Promise<Note
   }
 
   if (!key) {
-    throw new SharedNoteRouteError('This note is encrypted and requires a decryption key.', 'SharedNoteMissingKey');
+    throw new SharedNoteRouteError('This note is encrypted and requires a decryption key. Ask the sender to resend the full shared link.', 'SharedNoteMissingKey');
   }
 
   try {

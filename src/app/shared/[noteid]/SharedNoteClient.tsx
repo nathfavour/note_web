@@ -352,6 +352,9 @@ export default function SharedNoteClient({ noteId, initialKey, initialNote }: Sh
 
   const decryptSharedNote = useCallback(async (note: Notes) => {
     const meta = parseSharedNoteMeta(note);
+    if (meta.clientDecrypted) {
+      return note;
+    }
     const isT4EncryptedPublicNote = meta.isEncrypted && meta.encryptionVersion === 'T4';
     const isGhostNote = !!meta.isGhost;
 
@@ -388,11 +391,15 @@ export default function SharedNoteClient({ noteId, initialKey, initialNote }: Sh
   }, [key, parseSharedNoteMeta]);
 
   const normalizeSharedNote = useCallback(async (note: Notes) => {
+    const meta = parseSharedNoteMeta(note);
+    if (meta.clientDecrypted) {
+      return note;
+    }
     const decrypted = await decryptSharedNote(note);
-    const meta = parseSharedNoteMeta(decrypted);
+    const normalizedMeta = parseSharedNoteMeta(decrypted);
     return {
       ...decrypted,
-      metadata: JSON.stringify({ ...meta, clientDecrypted: true }),
+      metadata: JSON.stringify({ ...normalizedMeta, clientDecrypted: true }),
     };
   }, [decryptSharedNote, parseSharedNoteMeta]);
 
