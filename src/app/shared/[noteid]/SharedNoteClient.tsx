@@ -566,8 +566,12 @@ export default function SharedNoteClient({ noteId, initialKey, initialNote }: Sh
   ]);
 
   useEffect(() => {
+    if (initialNote) {
+      setIsLoadingNote(false);
+      return;
+    }
     fetchSharedNote();
-  }, [fetchSharedNote, CACHE_KEY, invalidate]);
+  }, [fetchSharedNote, CACHE_KEY, invalidate, initialNote]);
 
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);

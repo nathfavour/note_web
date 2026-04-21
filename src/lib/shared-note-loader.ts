@@ -89,6 +89,6 @@ export async function loadSharedNote(noteId: string, key?: string): Promise<Note
       : await decryptGhostNote(note, key, meta);
   } catch (error) {
     if (error instanceof SharedNoteRouteError) throw error;
-    throw new SharedNoteRouteError('Failed to decrypt shared note. The link may be invalid or tampered with.', 'SharedNoteDecryptionFailed');
+    throw new SharedNoteRouteError('This note could not be decrypted because the key is invalid. Ask the sender to resend the full shared link.', 'SharedNoteInvalidKey');
   }
 }
