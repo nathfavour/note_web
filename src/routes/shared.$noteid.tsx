@@ -1,10 +1,13 @@
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useLocation } from '@tanstack/react-router'
 import SharedNoteClient from '@/app/shared/[noteid]/SharedNoteClient'
 import { loadSharedNote, SharedNoteRouteError } from '@/lib/shared-note-loader'
 
 export const Route = createFileRoute('/shared/$noteid')({
-  loader: async ({ params }) => loadSharedNote(params.noteid),
+  loader: async ({ params, location }) => {
+    const pathKey = location.pathname.split('/').filter(Boolean)[2]
+    return loadSharedNote(params.noteid, pathKey)
+  },
   pendingComponent: SharedNotePending,
   errorComponent: SharedNoteError,
   component: SharedNoteRoute,
@@ -13,7 +16,9 @@ export const Route = createFileRoute('/shared/$noteid')({
 function SharedNoteRoute() {
   const note = Route.useLoaderData()
   const { noteid } = Route.useParams()
-  return <SharedNoteClient noteId={noteid} initialNote={note} />
+  const location = useLocation()
+  const pathKey = location.pathname.split('/').filter(Boolean)[2]
+  return <SharedNoteClient noteId={noteid} initialKey={pathKey} initialNote={note} />
 }
 
 function SharedNotePending() {
