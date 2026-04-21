@@ -7,5 +7,5 @@ export const Route = createFileRoute('/shared/$noteid/$key')({
 
 function SharedNoteRoute() {
   const { noteid, key } = Route.useParams()
-  return <SharedNoteClient noteId={noteid} initialKey={key} />
+  return <SharedNoteClient noteId={noteid} initialKey={Array.isArray(key) ? key.join('/') : key} />
 }
