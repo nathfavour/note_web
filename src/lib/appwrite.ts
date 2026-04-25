@@ -31,38 +31,6 @@ const databases = new Databases(client);
 const storage = new Storage(client);
 const functions = new Functions(client);
 const realtime = new Realtime(client);
-const CURRENT_USER_CACHE_TTL = 5000;
-let currentUserCache: { user: Users | null; expiresAt: number } | null = null;
-let currentUserInFlight: Promise<Users | null> | null = null;
-
-export async function getCurrentUser(force = false): Promise<Users | null> {
-  if (!force && currentUserCache && currentUserCache.expiresAt > Date.now()) {
-    return currentUserCache.user;
-  }
-
-  if (!force && currentUserInFlight) {
-    return currentUserInFlight;
-  }
-
-  currentUserInFlight = account.get()
-    .then((user) => {
-      currentUserCache = { user: user as unknown as Users, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };
-      return user as unknown as Users;
-    })
-    .catch(() => {
-      currentUserCache = null;
-      return null;
-    })
-    .finally(() => {
-      currentUserInFlight = null;
-    });
-
-  return currentUserInFlight;
-}
-
-export function invalidateCurrentUserCache() {
-  currentUserCache = null;
-}
 
 // export app public uri
  export const APP_URI = process.env.NEXT_PUBLIC_APP_URI ?? `https://app.${APPWRITE_CONFIG.SYSTEM.DOMAIN}`;
