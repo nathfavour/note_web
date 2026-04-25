@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/ui/AuthContext';
 import { GhostEditor } from '@/components/landing/GhostEditor';
@@ -10,7 +10,7 @@ import {
   Toolbar,
   Stack,
   Typography,
-  CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import Logo from '@/components/common/Logo';
 import { Button } from '@/components/ui/Button';
@@ -19,30 +19,12 @@ import { DynamicSidebarProvider, DynamicSidebar } from '@/components/ui/DynamicS
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading, openIDMWindow, isAuthenticating } = useAuth();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (!isLoading && isAuthenticated) {
       router.replace('/notes');
     }
   }, [isAuthenticated, isLoading, router]);
-
-  if (!mounted || isLoading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          minHeight: '100vh',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: '#0F0D0C',
-        }}
-      >
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
 
   if (isAuthenticated) return null;
 
@@ -90,7 +72,7 @@ export default function Home() {
         </AppBar>
 
         <Box component="main" sx={{ flex: 1, py: 4 }}>
-          <GhostEditor />
+          {isLoading ? <LoadingSkeleton /> : <GhostEditor />}
         </Box>
 
         <Box component="footer" sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', py: 6, textAlign: 'center' }}>
@@ -101,5 +83,45 @@ export default function Home() {
       </Box>
       <DynamicSidebar />
     </DynamicSidebarProvider>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <Box
+      sx={{
+        px: { xs: 2, md: 4 },
+        py: 3,
+      }}
+    >
+      <Box
+        sx={{
+          mx: 'auto',
+          maxWidth: 960,
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          borderRadius: 6,
+          bgcolor: '#161412',
+          p: { xs: 2, md: 3 },
+        }}
+      >
+        <Stack spacing={2.5}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Skeleton variant="circular" width={40} height={40} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+            <Box sx={{ flex: 1 }}>
+              <Skeleton variant="text" width="28%" height={28} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+              <Skeleton variant="text" width="40%" height={18} sx={{ bgcolor: 'rgba(255,255,255,0.06)' }} />
+            </Box>
+          </Stack>
+
+          <Skeleton variant="rounded" height={180} sx={{ bgcolor: 'rgba(255,255,255,0.05)' }} />
+
+          <Stack direction="row" spacing={2}>
+            <Skeleton variant="rounded" height={96} sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.05)' }} />
+            <Skeleton variant="rounded" height={96} sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.05)' }} />
+            <Skeleton variant="rounded" height={96} sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.05)' }} />
+          </Stack>
+        </Stack>
+      </Box>
+    </Box>
   );
 }
