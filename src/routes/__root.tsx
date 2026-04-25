@@ -4,8 +4,6 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Providers } from '@/components/Providers'
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
-import { WorkspaceLoading } from '@/components/ui/WorkspaceLoading'
 
 import appCss from '../globals.css?url'
 
@@ -32,11 +30,7 @@ export const Route = createRootRoute({
 })
 
 function RootPendingComponent() {
-  return (
-    <AppLayoutContent>
-      <WorkspaceLoading />
-    </AppLayoutContent>
-  )
+  return <StaticWorkspaceFrame />
 }
 
 function RootErrorComponent({ error, info, reset }: ErrorComponentProps) {
@@ -72,6 +66,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <StaticWorkspaceFrame />
         <Providers>{children}</Providers>
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
@@ -85,5 +80,75 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function StaticWorkspaceFrame() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#0A0908', color: '#fff' }}>
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 1,
+          height: 88,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          background: 'rgba(10,9,8,0.96)',
+          backdropFilter: 'blur(18px)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 999, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ width: 140, height: 16, borderRadius: 999, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ width: 96, height: 12, borderRadius: 999, background: 'rgba(255,255,255,0.05)' }} />
+          </div>
+        </div>
+        <div style={{ width: 108, height: 38, borderRadius: 14, background: 'rgba(255,255,255,0.08)' }} />
+      </div>
+
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 88px)' }}>
+        <aside
+          style={{
+            display: 'none',
+            width: 280,
+            borderRight: '1px solid rgba(255,255,255,0.05)',
+            padding: 20,
+          }}
+        />
+        <main style={{ flex: 1, padding: '24px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ width: 180, height: 48, borderRadius: 16, background: 'rgba(255,255,255,0.08)', marginBottom: 8 }} />
+            <div style={{ width: 240, height: 18, borderRadius: 999, background: 'rgba(255,255,255,0.05)' }} />
+          </div>
+
+          <div style={{ height: 72, borderRadius: 20, background: 'rgba(255,255,255,0.05)', marginBottom: 24 }} />
+
+          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', marginBottom: 24 }}>
+            <div style={{ width: 88, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ width: 88, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ width: 88, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ width: 88, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)' }} />
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gap: 16,
+              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            }}
+          >
+            <div style={{ height: 220, borderRadius: 24, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ height: 220, borderRadius: 24, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ height: 220, borderRadius: 24, background: 'rgba(255,255,255,0.05)' }} />
+            <div style={{ height: 220, borderRadius: 24, background: 'rgba(255,255,255,0.05)' }} />
+          </div>
+        </main>
+      </div>
+    </div>
   )
 }
