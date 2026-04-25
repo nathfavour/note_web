@@ -9,7 +9,6 @@ import {
     AppBar, 
     Toolbar, 
     Stack, 
-    CircularProgress,
     Typography
 } from '@mui/material';
 import Logo from '@/components/common/Logo';
