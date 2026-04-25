@@ -4,7 +4,8 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Providers } from '@/components/Providers'
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
-import { StartupShell } from '@/components/ui/StartupShell'
+import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import { WorkspaceLoading } from '@/components/ui/WorkspaceLoading'
 
 import appCss from '../globals.css?url'
 
@@ -31,7 +32,11 @@ export const Route = createRootRoute({
 })
 
 function RootPendingComponent() {
-  return <StartupShell />
+  return (
+    <AppLayoutContent>
+      <WorkspaceLoading />
+    </AppLayoutContent>
+  )
 }
 
 function RootErrorComponent({ error, info, reset }: ErrorComponentProps) {

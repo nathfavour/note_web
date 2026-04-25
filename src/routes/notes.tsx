@@ -1,8 +1,8 @@
 import React, { Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { StartupShell } from '@/components/ui/StartupShell'
+import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import { WorkspaceLoading } from '@/components/ui/WorkspaceLoading'
 
-const AppLayoutShell = React.lazy(() => import('@/components/AppLayoutShell'))
 const NotesPage = React.lazy(() => import('@/app/(app)/notes/page'))
 
 export const Route = createFileRoute('/notes')({
@@ -13,13 +13,17 @@ export const Route = createFileRoute('/notes')({
 function NotesRoute() {
   return (
     <Suspense fallback={<NotesRoutePending />}>
-      <AppLayoutShell>
+      <AppLayoutContent>
         <NotesPage />
-      </AppLayoutShell>
+      </AppLayoutContent>
     </Suspense>
   )
 }
 
 function NotesRoutePending() {
-  return <StartupShell />
+  return (
+    <AppLayoutContent>
+      <WorkspaceLoading />
+    </AppLayoutContent>
+  )
 }
