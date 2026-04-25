@@ -86,10 +86,6 @@ const getCachedCurrentUser = () => {
   return persistent.user;
 };
 
-export function getCurrentUserSnapshot(): Users | null {
-  return getCachedCurrentUser();
-}
-
 const setCachedCurrentUser = (user: Users | null) => {
   const cache: CachedCurrentUser = { user, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };
   currentUserCache = cache;
