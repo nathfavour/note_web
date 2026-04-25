@@ -31,112 +31,26 @@ const databases = new Databases(client);
 const storage = new Storage(client);
 const functions = new Functions(client);
 const realtime = new Realtime(client);
-const CURRENT_USER_CACHE_KEY = 'kylrix_note_current_user_v2';
-const CURRENT_USER_CACHE_TTL = 5 * 60 * 1000;
-const CURRENT_USER_REQUEST_TIMEOUT = 2500;
-
-type CachedCurrentUser = {
-  user: Users | null;
-  expiresAt: number;
-};
-
-let currentUserCache: CachedCurrentUser | null = null;
+const CURRENT_USER_CACHE_TTL = 5000;
+let currentUserCache: { user: Users | null; expiresAt: number } | null = null;
 let currentUserInFlight: Promise<Users | null> | null = null;
-const originalAccountGet = account.get.bind(account);
 
-const readPersistentCurrentUserCache = (): CachedCurrentUser | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(CURRENT_USER_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedCurrentUser;
-    if (!parsed || typeof parsed.expiresAt !== 'number' || parsed.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(CURRENT_USER_CACHE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-};
-
-const writePersistentCurrentUserCache = (cache: CachedCurrentUser | null) => {
-  if (typeof window === 'undefined') return;
-  try {
-    if (!cache) {
-      window.localStorage.removeItem(CURRENT_USER_CACHE_KEY);
-      return;
-    }
-    window.localStorage.setItem(CURRENT_USER_CACHE_KEY, JSON.stringify(cache));
-  } catch {
-    // Ignore storage failures in private browsing or constrained environments.
-  }
-};
-
-const clearCurrentUserCache = () => {
-  currentUserCache = null;
-  writePersistentCurrentUserCache(null);
-};
-
-const getCachedCurrentUser = () => {
-  if (currentUserCache && currentUserCache.expiresAt > Date.now()) return currentUserCache.user;
-  const persistent = readPersistentCurrentUserCache();
-  if (!persistent) return null;
-  currentUserCache = persistent;
-  return persistent.user;
-};
-
-const setCachedCurrentUser = (user: Users | null) => {
-  const cache: CachedCurrentUser = { user, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };
-  currentUserCache = cache;
-  writePersistentCurrentUserCache(cache);
-  return user;
-};
-
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error('Current user request timed out')), timeoutMs);
-    }),
-  ]);
-};
-
-const patchAccountMethod = (methodName: string) => {
-  const original = (account as any)[methodName];
-  if (typeof original !== 'function') return;
-  (account as any)[methodName] = async (...args: any[]) => {
-    const result = await original.apply(account, args);
-    clearCurrentUserCache();
-    return result;
-  };
-};
-
-patchAccountMethod('deleteSession');
-patchAccountMethod('deleteSessions');
-patchAccountMethod('updatePrefs');
-patchAccountMethod('updateName');
-patchAccountMethod('updateEmail');
-patchAccountMethod('updatePhone');
-patchAccountMethod('updatePassword');
-
-(account as any).get = async () => {
-  if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
+export async function getCurrentUser(force = false): Promise<Users | null> {
+  if (!force && currentUserCache && currentUserCache.expiresAt > Date.now()) {
     return currentUserCache.user;
   }
-  const persistent = readPersistentCurrentUserCache();
-  if (persistent) {
-    currentUserCache = persistent;
-    return persistent.user;
-  }
-  if (currentUserInFlight) {
+
+  if (!force && currentUserInFlight) {
     return currentUserInFlight;
   }
 
-  currentUserInFlight = withTimeout(originalAccountGet(), CURRENT_USER_REQUEST_TIMEOUT)
-    .then((user) => setCachedCurrentUser(user as unknown as Users))
+  currentUserInFlight = account.get()
+    .then((user) => {
+      currentUserCache = { user: user as unknown as Users, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };
+      return user as unknown as Users;
+    })
     .catch(() => {
-      clearCurrentUserCache();
+      currentUserCache = null;
       return null;
     })
     .finally(() => {
@@ -144,7 +58,11 @@ patchAccountMethod('updatePassword');
     });
 
   return currentUserInFlight;
-};
+}
+
+export function invalidateCurrentUserCache() {
+  currentUserCache = null;
+}
 
 // export app public uri
  export const APP_URI = process.env.NEXT_PUBLIC_APP_URI ?? `https://app.${APPWRITE_CONFIG.SYSTEM.DOMAIN}`;
@@ -646,25 +564,21 @@ export async function searchUsers(query: string, limit: number = 5) {
 // --- USER SESSION ---
 
 export async function getCurrentUser(force = false): Promise<Users | null> {
-  if (!force) {
-    if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
-      return currentUserCache.user;
-    }
-    const persistent = readPersistentCurrentUserCache();
-    if (persistent) {
-      currentUserCache = persistent;
-      return persistent.user;
-    }
+  if (!force && currentUserCache && currentUserCache.expiresAt > Date.now()) {
+    return currentUserCache.user;
   }
 
   if (!force && currentUserInFlight) {
     return currentUserInFlight;
   }
 
-  currentUserInFlight = withTimeout(originalAccountGet(), CURRENT_USER_REQUEST_TIMEOUT)
-    .then((user) => setCachedCurrentUser(user as unknown as Users))
+  currentUserInFlight = account.get()
+    .then((user) => {
+      currentUserCache = { user: user as unknown as Users, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };
+      return user as unknown as Users;
+    })
     .catch(() => {
-      clearCurrentUserCache();
+      currentUserCache = null;
       return null;
     })
     .finally(() => {
@@ -675,7 +589,7 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
 }
 
 export function invalidateCurrentUserCache() {
-  clearCurrentUserCache();
+  currentUserCache = null;
 }
 
 // Unified resolver: attempts global session then cookie-based fallback
