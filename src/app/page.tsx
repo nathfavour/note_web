@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/ui/AuthContext';
 import { GhostEditor } from '@/components/landing/GhostEditor';
@@ -18,15 +18,16 @@ import { DynamicSidebarProvider, DynamicSidebar } from '@/components/ui/DynamicS
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading, openIDMWindow, isAuthenticating } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!isLoading && isAuthenticated) {
       router.replace('/notes');
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // If authenticated, we show nothing (it will redirect)
-  if (isAuthenticated) return null;
+  const showWorkspace = mounted && !isLoading && !isAuthenticated;
 
   return (
     <DynamicSidebarProvider>
@@ -72,7 +73,29 @@ export default function Home() {
         </AppBar>
 
         <Box component="main" sx={{ flex: 1, py: 4 }}>
-          <GhostEditor />
+          {showWorkspace ? (
+            <GhostEditor />
+          ) : (
+            <Box
+              sx={{
+                minHeight: '60vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: 3,
+                textAlign: 'center'
+              }}
+            >
+              <Box sx={{ maxWidth: 520 }}>
+                <Typography variant="h4" sx={{ mb: 1, fontWeight: 900 }}>
+                  Opening your workspace
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.65)' }}>
+                  Pulling your session and notes into view.
+                </Typography>
+              </Box>
+            </Box>
+          )}
         </Box>
 
         <Box component="footer" sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', py: 6, textAlign: 'center' }}>

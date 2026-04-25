@@ -13,24 +13,16 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 const STORAGE_KEY = 'kylrixnote_sidebar_collapsed';
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved === 'true';
+  });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) {
-        setIsCollapsed(saved === 'true');
-      }
-      setIsLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
-    }
-  }, [isCollapsed, isLoaded]);
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
+  }, [isCollapsed]);
 
   const setCollapsed = useCallback((collapsed: boolean | ((prev: boolean) => boolean)) => {
     setIsCollapsed(collapsed);
@@ -38,12 +30,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed: setCollapsed }}>
-      <Box sx={{ 
-        visibility: isLoaded ? 'visible' : 'hidden', 
-        opacity: isLoaded ? 1 : 0,
-        transition: 'opacity 0.2s ease-in-out',
-        minHeight: '100vh'
-      }}>
+      <Box sx={{ minHeight: '100vh' }}>
         {children}
       </Box>
     </SidebarContext.Provider>

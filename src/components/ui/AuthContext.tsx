@@ -43,7 +43,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initialSnapshot = getCurrentUserSnapshot();
   const [user, setUser] = useState<User | null>(() => initialSnapshot);
-  const [isLoading, setIsLoading] = useState<boolean>(() => !initialSnapshot);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [emailVerificationReminderDismissed, setEmailVerificationReminderDismissed] = useState(false);
@@ -165,6 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (initAuthStarted.current) return;
     initAuthStarted.current = true;
 
+    setIsLoading(false);
     void refreshUser();
   }, [refreshUser]);
 

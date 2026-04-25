@@ -55,9 +55,5 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  if (isAuthenticated && pathname === '/') {
-    return null; // Will redirect to notes
-  }
-
   return <>{children}</>;
 };
