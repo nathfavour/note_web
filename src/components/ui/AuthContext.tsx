@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCurrentUser, getUser, createUser, updateUser, account } from '@/lib/appwrite';
+import { invalidateCurrentUserCache, getCurrentUser, getUser, createUser, updateUser, account } from '@/lib/appwrite';
 import { getEffectiveUsername } from '@/lib/utils';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
@@ -42,11 +42,8 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  // Start with a heuristic isLoading based on localStorage to avoid initial flicker
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return localStorage.getItem('kylrix_auth_active') === 'true';
-  });
+  // Keep loading true until initial check is actually done
+  const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [emailVerificationReminderDismissed, setEmailVerificationReminderDismissed] = useState(false);
@@ -56,9 +53,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const refreshUser = useCallback(async (_isRetry = false, retryCount = 0) => {
+  const refreshUser = useCallback(async (force = false, retryCount = 0, skipLoadingState = false) => {
+    if (!skipLoadingState) setIsLoading(true);
     try {
-      const currentUser = await getCurrentUser();
+      if (force) {
+        invalidateCurrentUserCache();
+      }
+
+      const currentUser = await getCurrentUser(force);
       if (currentUser) {
         // Set persistent flag for optimistic auth on next reload
         if (typeof window !== 'undefined') {
@@ -118,13 +120,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         setUser({ ...currentUser, ...dbUser });
+        return { ...currentUser, ...dbUser };
       } else {
+        const hasAuthSignal = typeof window !== 'undefined' && window.location.search.includes('auth=success');
+        const hasAuthHint = typeof window !== 'undefined' && localStorage.getItem('kylrix_auth_active') === 'true';
+
+        if ((hasAuthSignal || hasAuthHint) && retryCount < 3) {
+          await new Promise(resolve => setTimeout(resolve, 750));
+          return refreshUser(true, retryCount + 1, skipLoadingState);
+        }
+
         if (typeof window !== 'undefined') {
           localStorage.removeItem('kylrix_auth_active');
         }
         setUser(null);
+        return null;
       }
-      return currentUser;
     } catch (error: any) {
       // Check for auth=success signal in URL
       const hasAuthSignal = typeof window !== 'undefined' && window.location.search.includes('auth=success');
@@ -132,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (hasAuthSignal && retryCount < 3) {
         console.log(`Auth signal detected but session not found in note. Retrying... (${retryCount + 1})`);
         await new Promise(resolve => setTimeout(resolve, 1000));
-        return refreshUser(true, retryCount + 1);
+        return refreshUser(true, retryCount + 1, skipLoadingState);
       }
 
       // If error is network related, don't clear user yet, just set offline flag if we had a user
@@ -150,39 +161,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Failed to get current user:', error);
       return null;
     } finally {
-      setIsLoading(false);
+      if (!skipLoadingState) setIsLoading(false);
     }
   }, []);
 
   const attemptSilentAuth = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-
-    if (user) return;
+    if (typeof window === 'undefined') return null;
+    if (user) return user;
 
     const authSubdomain = process.env.NEXT_PUBLIC_AUTH_SUBDOMAIN || 'accounts';
     const domain = process.env.NEXT_PUBLIC_DOMAIN || 'kylrix.space';
-    if (!authSubdomain || !domain) return;
+    if (!authSubdomain || !domain) return null;
 
-    return new Promise<void>((resolve) => {
+    return new Promise<User | null>((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.src = `https://${authSubdomain}.${domain}/silent-check`;
       iframe.style.display = 'none';
 
       const timeout = window.setTimeout(() => {
         cleanup();
-        resolve();
+        resolve(null);
       }, 5000);
 
-      const handleIframeMessage = (event: MessageEvent) => {
+      const handleIframeMessage = async (event: MessageEvent) => {
         if (event.origin !== `https://${authSubdomain}.${domain}`) return;
 
         if (event.data?.type === 'idm:auth-status' && event.data.status === 'authenticated') {
-          refreshUser();
+          const newUser = await refreshUser(false, 0, true);
           cleanup();
-          resolve();
+          resolve(newUser);
         } else if (event.data?.type === 'idm:auth-status') {
           cleanup();
-          resolve();
+          resolve(null);
         }
       };
 
@@ -200,22 +210,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user, refreshUser]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const dismissed = localStorage.getItem('emailVerificationReminderDismissed');
-      if (dismissed === 'true') {
-        setEmailVerificationReminderDismissed(true);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     if (initAuthStarted.current) return;
     initAuthStarted.current = true;
 
     const initAuth = async () => {
-      const localUser = await refreshUser();
-      if (!localUser) {
-        await attemptSilentAuth();
+      setIsLoading(true);
+      try {
+        const localUser = await refreshUser(false, 0, true);
+        if (!localUser) {
+          await attemptSilentAuth();
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
