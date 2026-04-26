@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { invalidateCurrentUserCache, getCurrentUser, getUser, createUser, updateUser, account } from '@/lib/appwrite';
+import { getCurrentUser, account, getKylrixPulse, setKylrixPulse, clearKylrixPulse, globalSessionPromise } from '@/lib/appwrite';
 import { getEffectiveUsername } from '@/lib/utils';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
@@ -14,6 +14,7 @@ interface User {
   $id: string;
   email: string | null;
   name: string | null;
+  isPulse?: boolean;
   emailVerification?: boolean;
   [key: string]: any;
 }
@@ -34,8 +35,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. Instant Synchronous Load from Pulse Cache
+  const [user, setUser] = useState<User | null>(() => {
+    const pulse = getKylrixPulse();
+    if (pulse) {
+        return { $id: pulse.$id, name: pulse.name, isPulse: true, email: null, profilePicId: pulse.profilePicId };
+    }
+    return null;
+  });
+  
+  const [isLoading, setIsLoading] = useState(!getKylrixPulse());
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -44,20 +53,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const pathname = usePathname();
 
-  const refreshUser = useCallback(async (force = false) => {
+  // 2. Background Revalidation (Mandatory account.get)
+  const refreshUser = useCallback(async (force = false): Promise<User | null> => {
     setIsLoading(true);
     try {
-      if (force) invalidateCurrentUserCache();
+      // Use direct account.get for the revalidation to be safe
+      const currentUser = await account.get().catch(() => null);
       
-      const currentUser = await getCurrentUser(force);
       if (currentUser) {
-        localStorage.setItem('kylrix_auth_active', 'true');
+        setKylrixPulse(currentUser);
         
+        // Attempt to get DB profile for full user state
+        const { getUser, createUser } = await import('@/lib/appwrite');
         let dbUser;
         try {
           dbUser = await getUser(currentUser.$id);
         } catch {
-          // Fallback to creating profile if missing
           const autoUsername = getEffectiveUsername(currentUser);
           dbUser = await createUser({
             id: currentUser.$id,
@@ -68,14 +79,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         const fullUser = { ...currentUser, ...dbUser };
         setUser(fullUser);
+        setKylrixPulse(fullUser);
         return fullUser;
       } else {
-        localStorage.removeItem('kylrix_auth_active');
+        clearKylrixPulse();
         setUser(null);
         return null;
       }
     } catch (error) {
-      localStorage.removeItem('kylrix_auth_active');
+      clearKylrixPulse();
       setUser(null);
       return null;
     } finally {
@@ -91,16 +103,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [refreshUser]);
 
   const login = useCallback((userData: User) => {
-    localStorage.setItem('kylrix_auth_active', 'true');
+    setKylrixPulse(userData);
     setUser(userData);
   }, []);
 
   const logout = useCallback(async () => {
     try {
       await account.deleteSession('current');
-      localStorage.removeItem('kylrix_auth_active');
-      localStorage.removeItem('user_cache');
     } finally {
+      clearKylrixPulse();
       setUser(null);
       setIDMWindowOpen(false);
     }

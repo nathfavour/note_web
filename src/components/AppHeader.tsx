@@ -289,6 +289,7 @@ export default function AppHeader({ className }: AppHeaderProps) {
             </IconButton>
           ) : (
             <Button
+              id="navbar-launch-btn"
               href={`${getEcosystemUrl('accounts')}/login?source=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}`}
               variant="contained"
               size="large"
