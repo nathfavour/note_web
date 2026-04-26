@@ -82,7 +82,7 @@ const LIFESPAN_OPTIONS = [
 ];
 
 /**
- * A small circular countdown timer for ghost notes.
+ * A small circular countdown timer for sparks.
  * Uses a dotted stroke to represent the time remaining.
  */
 const GhostClock = ({ createdAt, expiresAt }: { createdAt: string, expiresAt: string }) => {
@@ -690,12 +690,12 @@ const GhostSparkDetailPanel = ({ note, onRecreate, onOpenPublicLink }: GhostSpar
                         {note.title}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 700 }}>
-                        GHOST SPARK • {new Date(note.createdAt).toLocaleDateString()}
+                        SPARK • {new Date(note.createdAt).toLocaleDateString()}
                     </Typography>
                 </Stack>
                 <Box sx={{ p: 3, borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', bgcolor: 'rgba(255,255,255,0.02)' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900, color: 'white', mb: 1 }}>
-                        Unable to open shared note
+                        Unable to open shared spark
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>
                         {error}
@@ -721,7 +721,7 @@ const GhostSparkDetailPanel = ({ note, onRecreate, onOpenPublicLink }: GhostSpar
                         {note.title}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 700 }}>
-                        GHOST SPARK • {new Date(note.createdAt).toLocaleDateString()}
+                        SPARK • {new Date(note.createdAt).toLocaleDateString()}
                     </Typography>
                 </Stack>
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -738,7 +738,7 @@ const GhostSparkDetailPanel = ({ note, onRecreate, onOpenPublicLink }: GhostSpar
                     {displayTitle}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 700 }}>
-                    GHOST SPARK • {new Date(note.createdAt).toLocaleDateString()}
+                    SPARK • {new Date(note.createdAt).toLocaleDateString()}
                 </Typography>
             </Stack>
 
@@ -1010,7 +1010,7 @@ const GhostSparkShelf = React.memo(({
                         fontWeight: 900
                     }}
                 >
-                    CLAIM NOTES NOW
+                    CLAIM SPARKS NOW
                 </Button>
             </Box>
         </Stack>
@@ -1278,24 +1278,9 @@ export const GhostEditor = () => {
                     '& .MuiAlert-message': { width: '100%' }
                 }}
             >
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1}>
-                    <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            Ghost Mode active. Notes last up to 7 days.
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }}>
-                            Login to Edit, Delete, or Secure your sparks permanently.
-                        </Typography>
-                    </Box>
-                    <Button 
-                        size="small" 
-                        variant="text"
-                        onClick={() => openIDMWindow()}
-                        sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-                    >
-                        Create Permanent Vault →
-                    </Button>
-                </Stack>
+                <Typography variant="body2" sx={{ fontWeight: 600, opacity: 0.9 }}>
+                    Sparks last up to 7 days. Connect to edit, delete or secure your sparks.
+                </Typography>
             </Alert>
 
             <Grid container spacing={4}>

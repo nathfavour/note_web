@@ -438,7 +438,7 @@ export default function SharedNoteClient({ noteId, initialKey, initialNote }: Sh
             console.error("Cache decryption failed", _e);
           }
           setIsLoadingNote(false);
-          // If it's a ghost note, we're mathematically sure it hasn't changed
+          // If it's a spark, we're mathematically sure it hasn't changed
           try {
             const meta = JSON.parse(cached.metadata || '{}');
             if (meta.isGhost) return; // Skip background refresh for ghosts

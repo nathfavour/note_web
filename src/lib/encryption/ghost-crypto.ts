@@ -71,6 +71,6 @@ export async function decryptGhostData(encryptedData: string, keyBase64: string)
         return textDecoder.decode(decryptedBuffer);
     } catch (e) {
         console.error('[GhostCrypto] Decryption failed:', e);
-        throw new Error('Failed to decrypt ghost note. The key may be invalid.');
+        throw new Error('Failed to decrypt spark. The key may be invalid.');
     }
 }

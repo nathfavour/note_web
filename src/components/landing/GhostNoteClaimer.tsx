@@ -10,7 +10,7 @@ const GHOST_STORAGE_KEY = 'kylrix_ghost_notes_v2';
 const GHOST_SECRET_KEY = 'kylrix_ghost_secret_v2';
 
 /**
- * Background component that claims ghost notes when a user authenticates.
+ * Background component that claims sparks when a user authenticates.
  * Extremely lightweight: only does logic if data exists in localStorage and user is logged in.
  */
 export const GhostNoteClaimer = () => {
@@ -31,7 +31,7 @@ export const GhostNoteClaimer = () => {
                 if (!Array.isArray(history) || history.length === 0) return;
 
                 isClaiming.current = true;
-                console.log(`[GhostClaimer] Detected ${history.length} notes to claim for user ${user.$id}`);
+                console.log(`[SparkClaimer] Detected ${history.length} sparks to claim for user ${user.$id}`);
 
                 try {
                     const noteIds = history.map(n => n.id);
@@ -51,7 +51,7 @@ export const GhostNoteClaimer = () => {
                             noteIds,
                             wrappedKey: wrappedSecret,
                             metadata: {
-                                source: 'ghost-claimer',
+                                source: 'spark-claimer',
                                 noteCount: noteIds.length,
                             },
                         }),
@@ -59,17 +59,17 @@ export const GhostNoteClaimer = () => {
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.error || 'Failed to claim ghost notes');
+                        throw new Error(errorData.error || 'Failed to claim sparks');
                     }
 
                     localStorage.removeItem(GHOST_STORAGE_KEY);
                     localStorage.removeItem(GHOST_SECRET_KEY);
-                    console.log('[GhostClaimer] Successfully handed off ghost notes to accounts API.');
+                    console.log('[SparkClaimer] Successfully handed off sparks to accounts API.');
                 } catch (fnErr: any) {
-                    console.error('[GhostClaimer] Failed to claim ghost notes:', fnErr);
+                    console.error('[SparkClaimer] Failed to claim sparks:', fnErr);
                 }
             } catch (e) {
-                console.error('[GhostClaimer] Error processing ghost history:', e);
+                console.error('[SparkClaimer] Error processing spark history:', e);
             } finally {
                 isClaiming.current = false;
             }
