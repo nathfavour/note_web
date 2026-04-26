@@ -22,34 +22,24 @@ function isPublicRoute(path: string): boolean {
 }
 
 export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
-  const { isAuthReady, isAuthenticated, user, openIDMWindow } = useAuth();
+  const { isLoading, isAuthenticated, openIDMWindow } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  // 1. Optimistic Redirect: If we have Pulse data and are on landing, go to /notes IMMEDIATELY
   useEffect(() => {
-    if (user && user.isPulse && pathname === '/') {
-        router.replace('/notes');
-    }
-  }, [user, pathname, router]);
-
-  // 2. Finalized Redirect & Protection: Run once background revalidation is finished
-  useEffect(() => {
-    if (!isAuthReady) return;
+    if (isLoading) return;
 
     const publicRoute = isPublicRoute(pathname);
     
-    // Protected route check: definitively unauthenticated
     if (!isAuthenticated && !publicRoute) {
       openIDMWindow();
       return;
     }
 
-    // Landing to Notes redirect: definitively authenticated
     if (isAuthenticated && pathname === '/') {
       router.replace('/notes');
     }
-  }, [isAuthReady, isAuthenticated, pathname, router, openIDMWindow]);
+  }, [isLoading, isAuthenticated, pathname, router, openIDMWindow]);
 
   return <>{children}</>;
 };
