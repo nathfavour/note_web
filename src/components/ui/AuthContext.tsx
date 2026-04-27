@@ -11,6 +11,7 @@ import {
 import { account } from '@/lib/appwrite';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 import { EmailVerificationReminder } from './EmailVerificationReminder';
+import { getCurrentUser } from '@/lib/appwrite';
 
 type User = {
   $id: string;
@@ -41,17 +42,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [idmWindowOpen, setIdmWindowOpen] = useState(false);
+  const ACCOUNT_GET_TIMEOUT_MS = 8000;
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: number | undefined;
 
     const loadUser = async () => {
+      timeoutId = window.setTimeout(() => {
+        if (!mounted) return;
+        setIsLoading(false);
+      }, ACCOUNT_GET_TIMEOUT_MS);
+
       try {
-        const currentUser = await account.get();
+        const currentUser = await getCurrentUser();
         if (!mounted) return;
 
         setUser(currentUser as User);
-        setIsAuthenticated(true);
+        setIsAuthenticated(!!currentUser);
         setIdmWindowOpen(false);
       } catch {
         if (!mounted) return;
@@ -59,6 +67,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         setIsAuthenticated(false);
       } finally {
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+        }
         if (mounted) {
           setIsLoading(false);
         }
@@ -69,6 +80,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, []);
 
@@ -93,9 +107,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     },
     refreshUser: async () => {
       try {
-        const currentUser = await account.get();
+        const currentUser = await getCurrentUser();
         setUser(currentUser as User);
-        setIsAuthenticated(true);
+        setIsAuthenticated(!!currentUser);
         setIsLoading(false);
         setIdmWindowOpen(false);
         return currentUser as User;
