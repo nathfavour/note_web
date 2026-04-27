@@ -131,6 +131,7 @@ function applyCurrentUserState(user: User | null, emitEvents: boolean) {
 
 async function attemptSilentAuth(): Promise<void> {
   if (!canUseWindow()) return;
+  if (!document.body) return;
   if (getCurrentUserSnapshot()) return;
   if (silentCheckInFlight) return silentCheckInFlight;
 
