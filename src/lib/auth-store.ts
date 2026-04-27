@@ -1,6 +1,6 @@
 'use client';
 
-import { account, clearKylrixPulse, getCurrentUserSnapshot, getKylrixPulse, getCurrentUser, invalidateCurrentUserCache, setCurrentUserSnapshot, setKylrixPulse } from '@/lib/appwrite';
+import { account, clearKylrixPulse, getCurrentUserSnapshot, getCurrentUser, invalidateCurrentUserCache, setCurrentUserSnapshot, setKylrixPulse } from '@/lib/appwrite';
 import { APPWRITE_CONFIG } from '@/lib/appwrite/config';
 
 export interface User {
@@ -74,7 +74,8 @@ function registerCurrentUserEventListeners() {
   const handleCurrentUserChange = (event: Event) => {
     if (isApplyingCurrentUserSnapshot) return;
     const customEvent = event as CustomEvent<User | null>;
-    applyCurrentUserState(customEvent.detail ?? getCurrentUserSnapshot() ?? null, false);
+    const nextUser = customEvent.detail === undefined ? getCurrentUserSnapshot() : customEvent.detail;
+    applyCurrentUserState(nextUser ?? null, false);
   };
 
   window.addEventListener('kylrix:note-current-user-changed', handleCurrentUserChange as EventListener);
@@ -84,7 +85,7 @@ function registerCurrentUserEventListeners() {
 export async function refreshUser(force = false): Promise<User | null> {
   try {
     if (force) {
-      invalidateCurrentUserCache();
+      invalidateCurrentUserCache(false);
     }
     const session = await account.get();
     if (session) {
