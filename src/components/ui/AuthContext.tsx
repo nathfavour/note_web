@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { account, getCurrentUser, getKylrixPulse, setKylrixPulse, clearKylrixPulse, globalSessionPromise } from '@/lib/appwrite';
+import { account, getCurrentUser, getKylrixPulse, setKylrixPulse, clearKylrixPulse, invalidateCurrentUserCache } from '@/lib/appwrite';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
 // Lazy load email verification reminder
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 2. Background Revalidation (Non-blocking)
   const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
-      const session = await globalSessionPromise;
+      const session = await getCurrentUser(true);
       if (session) {
         setUser(session as any);
         setKylrixPulse(session);
@@ -77,6 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [refreshUser]);
 
   const login = useCallback((userData: User) => {
+    invalidateCurrentUserCache();
     setKylrixPulse(userData);
     setUser(userData);
   }, []);
@@ -85,6 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await account.deleteSession('current');
     } finally {
+      invalidateCurrentUserCache();
       setUser(null);
       clearKylrixPulse();
       setIDMWindowOpen(false);

@@ -13,6 +13,10 @@ export const storage = new Storage(client);
 export const functions = new Functions(client);
 export const realtime = new Realtime(client);
 
+let currentUserCache: { user: Users | null; expiresAt: number } | null = null;
+let currentUserInFlight: Promise<Users | null> | null = null;
+const CURRENT_USER_CACHE_TTL = 5000;
+
 export { client, ID, Query, Permission, Role, OAuthProvider };
 
 // --- KYLRIX PULSE (ISOLATED INSTANT CACHE) ---
@@ -56,16 +60,36 @@ export function clearKylrixPulse() {
 }
 
 // --- DIRECT ACCOUNT FETCH ---
-export const globalSessionPromise = typeof window !== 'undefined' 
-    ? account.get().catch(() => null) 
-    : Promise.resolve(null);
+export async function getCurrentUser(force = false): Promise<Users | null> {
+  if (!force && currentUserCache && currentUserCache.expiresAt > Date.now()) {
+    return currentUserCache.user;
+  }
 
-export async function getCurrentUser(): Promise<Users | null> {
-  return (await globalSessionPromise) as unknown as Users | null;
+  if (!force && currentUserInFlight) {
+    return currentUserInFlight;
+  }
+
+  currentUserInFlight = account.get()
+    .then((user) => {
+      currentUserCache = {
+        user: user as unknown as Users,
+        expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
+      };
+      return user as unknown as Users;
+    })
+    .catch(() => {
+      currentUserCache = null;
+      return null;
+    })
+    .finally(() => {
+      currentUserInFlight = null;
+    });
+
+  return currentUserInFlight;
 }
 
 export function invalidateCurrentUserCache() {
-    clearKylrixPulse();
+    currentUserCache = null;
 }
 
 export class AppwriteService {

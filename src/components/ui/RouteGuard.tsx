@@ -1,6 +1,7 @@
-'use client';
+'"use client";
 
 import React, { useEffect } from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
 
@@ -40,6 +41,24 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
       router.replace('/notes');
     }
   }, [isLoading, isAuthenticated, pathname, router, openIDMWindow]);
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'radial-gradient(circle at top, rgba(15,14,18,0.95), rgba(4,3,7,0.98))',
+          color: '#fff',
+        }}
+      >
+        <CircularProgress sx={{ color: '#6366F1' }} />
+        <Typography sx={{ position: 'absolute', opacity: 0 }}>Loading</Typography>
+      </Box>
+    );
+  }
 
   return <>{children}</>;
 };

@@ -16,7 +16,8 @@ import {
   ListItemText,
 
   alpha,
-  Button
+  Button,
+  CircularProgress
   } from '@mui/material';
   import {
   Settings,
@@ -50,7 +51,7 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ className }: AppHeaderProps) {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [anchorElAccount, setAnchorElAccount] = useState<null | HTMLElement>(null);
   
   const router = useRouter();
@@ -287,6 +288,22 @@ export default function AppHeader({ className }: AppHeaderProps) {
                 borderRadius="10px"
               />
             </IconButton>
+          ) : isLoading ? (
+            <Box
+              sx={{
+                ml: 1,
+                width: 112,
+                height: 44,
+                borderRadius: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: '#161412',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+              }}
+            >
+              <CircularProgress size={18} sx={{ color: '#6366F1' }} />
+            </Box>
           ) : (
             <Button
               id="navbar-launch-btn"
