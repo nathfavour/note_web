@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { account, getCurrentUser } from '@/lib/appwrite';
+import { account, getCurrentUser, getKylrixPulse, setKylrixPulse, clearKylrixPulse, globalSessionPromise } from '@/lib/appwrite';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
 // Lazy load email verification reminder
@@ -13,6 +13,7 @@ interface User {
   $id: string;
   email: string | null;
   name: string | null;
+  isPulse?: boolean;
   [key: string]: any;
 }
 
@@ -31,8 +32,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. Instant Synchronous Load from Pulse Cache
+  const [user, setUser] = useState<User | null>(() => {
+    const pulse = getKylrixPulse();
+    if (pulse) {
+        return { $id: pulse.$id, name: pulse.name, isPulse: true, email: null, profilePicId: pulse.profilePicId };
+    }
+    return null;
+  });
+  
+  const [isLoading, setIsLoading] = useState(!getKylrixPulse());
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const idmWindowRef = useRef<Window | null>(null);
@@ -40,14 +49,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const pathname = usePathname();
 
+  // 2. Background Revalidation (Non-blocking)
   const refreshUser = useCallback(async (): Promise<User | null> => {
-    setIsLoading(true);
     try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser as any);
-      return currentUser as any;
+      const session = await globalSessionPromise;
+      if (session) {
+        setUser(session as any);
+        setKylrixPulse(session);
+      } else {
+        setUser(null);
+        clearKylrixPulse();
+      }
+      return session as any;
     } catch (error) {
       setUser(null);
+      clearKylrixPulse();
       return null;
     } finally {
       setIsLoading(false);
@@ -61,6 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [refreshUser]);
 
   const login = useCallback((userData: User) => {
+    setKylrixPulse(userData);
     setUser(userData);
   }, []);
 
@@ -69,6 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await account.deleteSession('current');
     } finally {
       setUser(null);
+      clearKylrixPulse();
       setIDMWindowOpen(false);
     }
   }, []);

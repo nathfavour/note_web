@@ -62,6 +62,7 @@ const MAX_LIFESPAN_DAYS = 7;
 const MAX_LIFESPAN_MS = MAX_LIFESPAN_DAYS * 24 * 60 * 60 * 1000;
 const MAX_CONTENT_LENGTH = 65000;
 const SURFACE = '#161514';
+const SURFACE_LIGHT = '#1E1D1C';
 const SURFACE_HOVER = '#1F1D1B';
 
 interface GhostNoteRef {
@@ -432,13 +433,17 @@ const GhostComposer = React.memo(forwardRef<GhostComposerHandle, GhostComposerPr
             p: 0,
             borderRadius: '32px',
             overflow: 'hidden',
-            bgcolor: SURFACE,
+            bgcolor: SURFACE_LIGHT,
             border: '1px solid rgba(255, 255, 255, 0.08)',
             boxShadow: '0 20px 40px -15px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5)',
             backdropFilter: 'none',
             position: 'relative',
             transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            '&:hover': {
+                bgcolor: SURFACE_HOVER,
+            },
             '&:focus-within': {
+                bgcolor: SURFACE_HOVER,
                 borderColor: alpha(theme.palette.secondary.main, 0.4),
                 boxShadow: `0 40px 80px -20px rgba(0,0,0,0.9), 0 0 20px ${alpha(theme.palette.secondary.main, 0.1)}, inset 0 1px 1px ${alpha('#FFFFFF', 0.1)}`,
             }
@@ -695,10 +700,10 @@ const GhostSparkDetailPanel = ({ note, onRecreate, onOpenPublicLink }: GhostSpar
                 </Stack>
                 <Box sx={{ p: 3, borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', bgcolor: 'rgba(255,255,255,0.02)' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 900, color: 'white', mb: 1 }}>
-                        Unable to open shared spark
+                        Unable to open shared note
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>
-                        {error}
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.65)' }}>
+                        This note may have expired or the link is invalid.
                     </Typography>
                 </Box>
                 <Button

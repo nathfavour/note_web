@@ -15,18 +15,57 @@ export const realtime = new Realtime(client);
 
 export { client, ID, Query, Permission, Role, OAuthProvider };
 
+// --- KYLRIX PULSE (ISOLATED INSTANT CACHE) ---
+const PULSE_KEY = 'kylrix_pulse_v1';
+
+export interface KylrixPulse {
+    $id: string;
+    name: string;
+    profilePicId?: string | null;
+    avatarBase64?: string | null;
+}
+
+export function getKylrixPulse(): KylrixPulse | null {
+    if (typeof window === 'undefined') return null;
+    if ((window as any).__KYLRIX_PULSE__) return (window as any).__KYLRIX_PULSE__;
+    try {
+        const raw = localStorage.getItem(PULSE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+export function setKylrixPulse(user: any, avatarBase64?: string | null) {
+    if (typeof window === 'undefined') return;
+    try {
+        const current = getKylrixPulse();
+        const pulse: KylrixPulse = {
+            $id: user.$id,
+            name: user.name || user.username || 'User',
+            profilePicId: user.prefs?.profilePicId || user.profilePicId || current?.profilePicId || null,
+            avatarBase64: avatarBase64 || (current?.$id === user.$id ? current?.avatarBase64 : null)
+        };
+        localStorage.setItem(PULSE_KEY, JSON.stringify(pulse));
+        (window as any).__KYLRIX_PULSE__ = pulse;
+    } catch (e) {}
+}
+
+export function clearKylrixPulse() {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(PULSE_KEY);
+    delete (window as any).__KYLRIX_PULSE__;
+}
+
 // --- DIRECT ACCOUNT FETCH ---
+export const globalSessionPromise = typeof window !== 'undefined' 
+    ? account.get().catch(() => null) 
+    : Promise.resolve(null);
+
 export async function getCurrentUser(): Promise<Users | null> {
-  try {
-    const user = await account.get();
-    return user as unknown as Users;
-  } catch {
-    return null;
-  }
+  return (await globalSessionPromise) as unknown as Users | null;
 }
 
 export function invalidateCurrentUserCache() {
-    // No-op
+    clearKylrixPulse();
 }
 
 export class AppwriteService {
