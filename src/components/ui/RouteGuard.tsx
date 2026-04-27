@@ -26,11 +26,10 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
   const { isLoading, isAuthenticated, openIDMWindow } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const publicRoute = isPublicRoute(pathname);
 
   useEffect(() => {
     if (isLoading) return;
-
-    const publicRoute = isPublicRoute(pathname);
     
     if (!isAuthenticated && !publicRoute) {
       openIDMWindow();
@@ -42,7 +41,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
   }, [isLoading, isAuthenticated, pathname, router, openIDMWindow]);
 
-  if (isLoading) {
+  if (isLoading && !publicRoute) {
     return (
       <Box
         sx={{
