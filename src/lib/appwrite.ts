@@ -13,9 +13,16 @@ export const storage = new Storage(client);
 export const functions = new Functions(client);
 export const realtime = new Realtime(client);
 
-let currentUserCache: { user: Users | null; expiresAt: number } | null = null;
+type CurrentUserSnapshot = {
+  user: Users;
+  expiresAt: number;
+};
+
+let currentUserCache: CurrentUserSnapshot | null = null;
 let currentUserInFlight: Promise<Users | null> | null = null;
 const CURRENT_USER_CACHE_TTL = 5000;
+const CURRENT_USER_CACHE_KEY = 'kylrix_note_current_user_v1';
+const CURRENT_USER_EVENT = 'kylrix:note-current-user-changed';
 
 export { client, ID, Query, Permission, Role, OAuthProvider };
 
@@ -59,14 +66,92 @@ export function clearKylrixPulse() {
     delete (window as any).__KYLRIX_PULSE__;
 }
 
-// --- DIRECT ACCOUNT FETCH ---
-export async function getCurrentUser(force = false): Promise<Users | null> {
-  if (!force && currentUserCache && currentUserCache.expiresAt > Date.now()) {
-    return currentUserCache.user;
+function canUseStorage() {
+  return typeof window !== 'undefined';
+}
+
+function readCurrentUserSnapshot() {
+  if (!canUseStorage()) return null;
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CurrentUserSnapshot;
+    if (!parsed?.user || parsed.expiresAt <= Date.now()) {
+      localStorage.removeItem(CURRENT_USER_CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCurrentUserSnapshot(user: Users | null) {
+  if (!canUseStorage()) return;
+  try {
+    if (!user) {
+      localStorage.removeItem(CURRENT_USER_CACHE_KEY);
+      window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: null }));
+      return;
+    }
+    localStorage.setItem(CURRENT_USER_CACHE_KEY, JSON.stringify({
+      user,
+      expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
+    }));
+    window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: user }));
+  } catch {
+    // best effort
+  }
+}
+
+function hydrateCurrentUserCache() {
+  if (currentUserCache) return;
+  const snapshot = readCurrentUserSnapshot();
+  if (snapshot) currentUserCache = snapshot;
+}
+
+export function getCurrentUserSnapshot() {
+  hydrateCurrentUserCache();
+  return currentUserCache && currentUserCache.expiresAt > Date.now() ? currentUserCache.user : null;
+}
+
+export function onCurrentUserChanged(listener: (user: Users | null) => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
   }
 
-  if (!force && currentUserInFlight) {
-    return currentUserInFlight;
+  const handler = (event: Event) => {
+    const customEvent = event as CustomEvent<Users | null>;
+    listener(customEvent.detail ?? null);
+  };
+
+  window.addEventListener(CURRENT_USER_EVENT, handler as EventListener);
+  return () => window.removeEventListener(CURRENT_USER_EVENT, handler as EventListener);
+}
+
+export function setCurrentUserSnapshot(user: Users | null) {
+  currentUserCache = user
+    ? {
+        user,
+        expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
+      }
+    : null;
+  writeCurrentUserSnapshot(user);
+}
+
+// --- DIRECT ACCOUNT FETCH ---
+export async function getCurrentUser(force = false): Promise<Users | null> {
+  if (!force) {
+    hydrateCurrentUserCache();
+    if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
+      return currentUserCache.user;
+    }
+    if (currentUserInFlight) {
+      return currentUserInFlight;
+    }
+  } else {
+    currentUserCache = null;
+    currentUserInFlight = null;
   }
 
   currentUserInFlight = account.get()
@@ -75,10 +160,12 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
         user: user as unknown as Users,
         expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
       };
+      writeCurrentUserSnapshot(user as unknown as Users);
       return user as unknown as Users;
     })
     .catch(() => {
       currentUserCache = null;
+      writeCurrentUserSnapshot(null);
       return null;
     })
     .finally(() => {
@@ -90,6 +177,8 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
 
 export function invalidateCurrentUserCache() {
     currentUserCache = null;
+    currentUserInFlight = null;
+    writeCurrentUserSnapshot(null);
 }
 
 export class AppwriteService {
