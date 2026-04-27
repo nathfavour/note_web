@@ -24,6 +24,8 @@ interface AuthContextType {
   login: (user: User) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
+  shouldShowEmailVerificationReminder: () => boolean;
+  dismissEmailVerificationReminder: () => void;
   openIDMWindow: () => void;
   closeIDMWindow: () => void;
   idmWindowOpen: boolean;
@@ -44,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(!getKylrixPulse());
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [emailVerificationReminderDismissed, setEmailVerificationReminderDismissed] = useState(false);
   const idmWindowRef = useRef<Window | null>(null);
   const initAuthStarted = useRef(false);
   const router = useRouter();
@@ -75,6 +78,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initAuthStarted.current = true;
     refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setEmailVerificationReminderDismissed(localStorage.getItem('emailVerificationReminderDismissed') === 'true');
+  }, []);
 
   const login = useCallback((userData: User) => {
     invalidateCurrentUserCache();
@@ -119,6 +127,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) router.replace('/');
   }, [user, router]);
 
+  const shouldShowEmailVerificationReminder = useCallback(() => {
+    return !!user && !user.emailVerification && !emailVerificationReminderDismissed;
+  }, [user, emailVerificationReminderDismissed]);
+
+  const dismissEmailVerificationReminder = useCallback(() => {
+    setEmailVerificationReminderDismissed(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('emailVerificationReminderDismissed', 'true');
+    }
+  }, []);
+
   const value = useMemo(() => ({
     user,
     isLoading,
@@ -126,10 +145,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     logout,
     refreshUser,
+    shouldShowEmailVerificationReminder,
+    dismissEmailVerificationReminder,
     openIDMWindow,
     closeIDMWindow,
     idmWindowOpen,
-  }), [user, isLoading, login, logout, refreshUser, openIDMWindow, closeIDMWindow, idmWindowOpen]);
+  }), [
+    user,
+    isLoading,
+    login,
+    logout,
+    refreshUser,
+    shouldShowEmailVerificationReminder,
+    dismissEmailVerificationReminder,
+    openIDMWindow,
+    closeIDMWindow,
+    idmWindowOpen,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
